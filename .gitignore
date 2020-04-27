@@ -1,0 +1,3 @@
+*.log
+elm-stuff
+node_modules
