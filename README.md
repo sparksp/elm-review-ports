@@ -1,5 +1,7 @@
 # review-ports
 
+![Elm Checks](https://github.com/sparksp/elm-review-ports/workflows/Elm%20Checks/badge.svg)
+
 Provides [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-review/latest/) rules to detect errant elm ports.
 
 ## Provided rules
