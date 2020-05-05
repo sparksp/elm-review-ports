@@ -24,6 +24,22 @@ main = "Hello"
                             ]
                           )
                         ]
+        , test "do not report when ports are used" <|
+            \_ ->
+                [ portsModule
+                , """
+module Main exposing (main)
+import Ports
+main = Ports.alarm "play"
+"""
+                ]
+                    |> Review.Test.runOnModules rule
+                    |> Review.Test.expectErrorsForModules
+                        [ ( "Ports"
+                          , [ unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                            ]
+                          )
+                        ]
         ]
 
 
