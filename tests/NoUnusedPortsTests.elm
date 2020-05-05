@@ -27,6 +27,16 @@ play = alarm "play"
 """
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
+        , test "report when an incoming port is unused" <|
+            \_ ->
+                """
+port module Ports exposing (a)
+port action : (String -> msg) -> Sub msg
+a = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectErrors
+                        [ unusedPortError "action"
+                        ]
         ]
 
 
