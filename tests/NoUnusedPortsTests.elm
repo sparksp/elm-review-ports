@@ -37,6 +37,16 @@ a = 1"""
                     |> Review.Test.expectErrors
                         [ unusedPortError "action"
                         ]
+        , test "do not report incoming ports that are used" <|
+            \_ ->
+                """
+port module Ports exposing (a)
+port action : (String -> msg) -> Sub msg
+type ActionMsg = Action String
+a = action Action
+"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
         ]
 
 
