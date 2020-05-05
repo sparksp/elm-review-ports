@@ -54,13 +54,18 @@ expressionVisitor node direction context =
 finalEvaluation : ModuleContext -> List (Error {})
 finalEvaluation { ports, exposed } =
     ports
-        |> removePorts exposed
+        |> removeExposedPorts exposed
         |> reportUnusedPorts
 
 
-removePorts : Set String -> Dict String data -> Dict String data
-removePorts remove ports =
-    Set.foldl Dict.remove ports remove
+removeExposedPorts : Exposed -> Dict String data -> Dict String data
+removeExposedPorts exposed ports =
+    case exposed of
+        ExposedAll ->
+            Dict.empty
+
+        ExposedList list ->
+            Set.foldl Dict.remove ports list
 
 
 
@@ -86,16 +91,21 @@ reportUnusedPort ( name, range ) =
 --- CONTEXT
 
 
+type Exposed
+    = ExposedAll
+    | ExposedList (Set String)
+
+
 type alias ModuleContext =
     { ports : Dict String Range
-    , exposed : Set String
+    , exposed : Exposed
     }
 
 
 initialModuleContext : ModuleContext
 initialModuleContext =
     { ports = Dict.empty
-    , exposed = Set.empty
+    , exposed = ExposedList Set.empty
     }
 
 
@@ -110,8 +120,13 @@ rememberExposing node context =
         Exposing.Explicit nodes ->
             rememberExposedList nodes context
 
-        _ ->
-            context
+        Exposing.All _ ->
+            rememberExposingAll context
+
+
+rememberExposingAll : ModuleContext -> ModuleContext
+rememberExposingAll context =
+    { context | exposed = ExposedAll }
 
 
 rememberExposedList : List (Node Exposing.TopLevelExpose) -> ModuleContext -> ModuleContext
@@ -131,7 +146,12 @@ rememberExposedItem node context =
 
 rememberExposedFunction : String -> ModuleContext -> ModuleContext
 rememberExposedFunction name context =
-    { context | exposed = Set.insert name context.exposed }
+    case context.exposed of
+        ExposedAll ->
+            context
+
+        ExposedList list ->
+            { context | exposed = ExposedList (Set.insert name list) }
 
 
 rememberFunctionCall : String -> ModuleContext -> ModuleContext

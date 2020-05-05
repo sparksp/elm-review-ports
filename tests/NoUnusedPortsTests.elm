@@ -35,6 +35,14 @@ port alarm : String -> Cmd msg
 a = 1"""
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
+        , test "do not report outgoing ports that are exposed with (..)" <|
+            \_ ->
+                """
+port module Ports exposing (..)
+port alarm : String -> Cmd msg
+a = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
         , test "report when an incoming port is unused" <|
             \_ ->
                 """
@@ -59,6 +67,14 @@ a = action Action
             \_ ->
                 """
 port module Ports exposing (action)
+port action : (String -> msg) -> Sub msg
+a = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
+        , test "do not report incoming ports that are exposed with (..)" <|
+            \_ ->
+                """
+port module Ports exposing (..)
 port action : (String -> msg) -> Sub msg
 a = 1"""
                     |> Review.Test.run rule
