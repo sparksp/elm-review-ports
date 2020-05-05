@@ -27,6 +27,14 @@ play = alarm "play"
 """
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
+        , test "do not report outgoing ports that are exposed" <|
+            \_ ->
+                """
+port module Ports exposing (alarm)
+port alarm : String -> Cmd msg
+a = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
         , test "report when an incoming port is unused" <|
             \_ ->
                 """
