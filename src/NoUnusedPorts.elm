@@ -4,6 +4,7 @@ import Dict exposing (Dict)
 import Elm.Syntax.Declaration as Declaration exposing (Declaration)
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
 import Elm.Syntax.Expression as Expression exposing (Expression)
+import Elm.Syntax.Import exposing (Import)
 import Elm.Syntax.Module as Module exposing (Module)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
@@ -29,6 +30,7 @@ moduleVisitor : Rule.ModuleRuleSchema {} ModuleContext -> Rule.ModuleRuleSchema 
 moduleVisitor schema =
     schema
         |> Rule.withModuleDefinitionVisitor moduleDefinitionVisitor
+        |> Rule.withImportVisitor importVisitor
         |> Rule.withDeclarationVisitor declarationVisitor
         |> Rule.withExpressionVisitor expressionVisitor
         |> Rule.withFinalModuleEvaluation finalModuleEvaluation
@@ -42,6 +44,11 @@ moduleDefinitionVisitor node context =
 
         _ ->
             ( [], context )
+
+
+importVisitor : Node Import -> ModuleContext -> ( List (Error {}), ModuleContext )
+importVisitor node context =
+    ( [], rememberImportedModule (Node.value node) context )
 
 
 declarationVisitor : Node Declaration -> Rule.Direction -> ModuleContext -> ( List (Error {}), ModuleContext )
@@ -141,6 +148,7 @@ initialProjectContext =
 type alias ModuleContext =
     { exposed : Exposed
     , functionCalls : Set ( ModuleName, String )
+    , importedFunctions : Dict ( ModuleName, String ) ( ModuleName, String )
     , ports : Dict String Range
     }
 
@@ -149,6 +157,7 @@ initialModuleContext : ModuleContext
 initialModuleContext =
     { exposed = ExposedList Set.empty
     , functionCalls = Set.empty
+    , importedFunctions = Dict.empty
     , ports = Dict.empty
     }
 
@@ -221,6 +230,36 @@ rememberExposedFunction name context =
             { context | exposed = ExposedList (Set.insert name list) }
 
 
+rememberImportedModule : Import -> ModuleContext -> ModuleContext
+rememberImportedModule { moduleName, exposingList } context =
+    case Maybe.map Node.value exposingList of
+        Just (Exposing.Explicit list) ->
+            rememberImportedList (Node.value moduleName) list context
+
+        _ ->
+            context
+
+
+rememberImportedList : ModuleName -> List (Node Exposing.TopLevelExpose) -> ModuleContext -> ModuleContext
+rememberImportedList moduleName list context =
+    List.foldl (rememberImportedItem moduleName) context list
+
+
+rememberImportedItem : ModuleName -> Node Exposing.TopLevelExpose -> ModuleContext -> ModuleContext
+rememberImportedItem moduleName item context =
+    case Node.value item of
+        Exposing.FunctionExpose name ->
+            rememberImportedFunction moduleName name context
+
+        _ ->
+            context
+
+
+rememberImportedFunction : ModuleName -> String -> ModuleContext -> ModuleContext
+rememberImportedFunction moduleName name context =
+    { context | importedFunctions = Dict.insert ( [], name ) ( moduleName, name ) context.importedFunctions }
+
+
 rememberPort : Node String -> ModuleContext -> ModuleContext
 rememberPort node context =
     { context | ports = Dict.insert (Node.value node) (Node.range node) context.ports }
@@ -228,7 +267,11 @@ rememberPort node context =
 
 rememberFunctionCall : ModuleName -> String -> ModuleContext -> ModuleContext
 rememberFunctionCall moduleName name context =
-    { context | functionCalls = Set.insert ( moduleName, name ) context.functionCalls }
+    let
+        functionCall =
+            expandFunctionCall context ( moduleName, name )
+    in
+    { context | functionCalls = Set.insert functionCall context.functionCalls }
 
 
 removeExposedPorts : ModuleContext -> ModuleContext
@@ -282,3 +325,9 @@ removeCalledLocalPorts ({ functionCalls, ports } as context) =
 removeCalledPorts : ProjectContext -> ProjectContext
 removeCalledPorts context =
     { context | ports = Set.foldl Dict.remove context.ports context.functionCalls }
+
+
+expandFunctionCall : ModuleContext -> ( ModuleName, String ) -> ( ModuleName, String )
+expandFunctionCall context ( moduleName, function ) =
+    Dict.get ( moduleName, function ) context.importedFunctions
+        |> Maybe.withDefault ( moduleName, function )
