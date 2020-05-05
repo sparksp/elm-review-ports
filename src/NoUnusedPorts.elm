@@ -149,6 +149,7 @@ type alias ModuleContext =
     { exposed : Exposed
     , functionCalls : Set ( ModuleName, String )
     , importedFunctions : Dict ( ModuleName, String ) ( ModuleName, String )
+    , importedAliases : Dict ModuleName ModuleName
     , ports : Dict String Range
     }
 
@@ -158,6 +159,7 @@ initialModuleContext =
     { exposed = ExposedList Set.empty
     , functionCalls = Set.empty
     , importedFunctions = Dict.empty
+    , importedAliases = Dict.empty
     , ports = Dict.empty
     }
 
@@ -231,17 +233,34 @@ rememberExposedFunction name context =
 
 
 rememberImportedModule : Import -> ModuleContext -> ModuleContext
-rememberImportedModule { moduleName, exposingList } context =
-    case Maybe.map Node.value exposingList of
-        Just (Exposing.Explicit list) ->
-            rememberImportedList (Node.value moduleName) list context
+rememberImportedModule { moduleName, moduleAlias, exposingList } context =
+    context
+        |> rememberImportedAlias (Node.value moduleName) moduleAlias
+        |> rememberImportedList (Node.value moduleName) exposingList
+
+
+rememberImportedAlias : ModuleName -> Maybe (Node ModuleName) -> ModuleContext -> ModuleContext
+rememberImportedAlias moduleName maybeModuleAlias context =
+    case Maybe.map Node.value maybeModuleAlias of
+        Just moduleAlias ->
+            { context | importedAliases = Dict.insert moduleAlias moduleName context.importedAliases }
 
         _ ->
             context
 
 
-rememberImportedList : ModuleName -> List (Node Exposing.TopLevelExpose) -> ModuleContext -> ModuleContext
-rememberImportedList moduleName list context =
+rememberImportedList : ModuleName -> Maybe (Node Exposing) -> ModuleContext -> ModuleContext
+rememberImportedList moduleName exposingList context =
+    case Maybe.map Node.value exposingList of
+        Just (Exposing.Explicit list) ->
+            rememberImportedExplicitList moduleName list context
+
+        _ ->
+            context
+
+
+rememberImportedExplicitList : ModuleName -> List (Node Exposing.TopLevelExpose) -> ModuleContext -> ModuleContext
+rememberImportedExplicitList moduleName list context =
     List.foldl (rememberImportedItem moduleName) context list
 
 
@@ -331,3 +350,12 @@ expandFunctionCall : ModuleContext -> ( ModuleName, String ) -> ( ModuleName, St
 expandFunctionCall context ( moduleName, function ) =
     Dict.get ( moduleName, function ) context.importedFunctions
         |> Maybe.withDefault ( moduleName, function )
+        |> expandModuleName context
+
+
+expandModuleName : ModuleContext -> ( ModuleName, String ) -> ( ModuleName, String )
+expandModuleName context ( moduleName, function ) =
+    ( Dict.get moduleName context.importedAliases
+        |> Maybe.withDefault moduleName
+    , function
+    )

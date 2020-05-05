@@ -40,13 +40,29 @@ main = Ports.alarm "play"
                             ]
                           )
                         ]
-        , test "do not report when imported ports that are exposed" <|
+        , test "do not report imported ports that are exposed" <|
             \_ ->
                 [ portsModule
                 , """
 module Main exposing (main)
 import Ports exposing (alarm)
 main = alarm "play"
+"""
+                ]
+                    |> Review.Test.runOnModules rule
+                    |> Review.Test.expectErrorsForModules
+                        [ ( "Ports"
+                          , [ unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                            ]
+                          )
+                        ]
+        , test "do not report ports used from an aliased module" <|
+            \_ ->
+                [ portsModule
+                , """
+module Main exposing (main)
+import Ports as P
+main = P.alarm "play"
 """
                 ]
                     |> Review.Test.runOnModules rule
