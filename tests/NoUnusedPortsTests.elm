@@ -18,6 +18,15 @@ a = 1"""
                     |> Review.Test.expectErrors
                         [ unusedPortError "alarm"
                         ]
+        , test "do not report outgoing ports that are used" <|
+            \_ ->
+                """
+port module Ports exposing (play)
+port alarm : String -> Cmd msg
+play = alarm "play"
+"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
         ]
 
 
