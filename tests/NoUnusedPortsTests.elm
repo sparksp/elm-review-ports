@@ -55,6 +55,14 @@ a = action Action
 """
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
+        , test "do not report incoming ports that are exposed" <|
+            \_ ->
+                """
+port module Ports exposing (action)
+port action : (String -> msg) -> Sub msg
+a = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
         ]
 
 
