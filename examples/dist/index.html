@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+    <title>Unused Ports</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <script src='main.js'></script>
+</head>
+<body>
+    <h1>Unused Ports</h1>
+    <p>Update <kbd>src/Main.elm</kbd> and then use <kbd>yarn run build</kbd> to refresh <code>main.js</code>.</p>
+    <h2>Ports Available</h2>
+    <div id="ports"></div>
+    <h2>Elm Output</h2>
+    <div id="elm"></div>
+    <h2>Findings</h2>
+    <ul>
+        <li>It does not matter whether the port is returned directly or via other function calls.</li>
+        <li>Being exposed from a module has no effect on its own.</li>
+        <li>A port is only made available when:
+            <ul>
+                <li>An outgoing port is returned from an application's <code>update</code>.</li>
+                <li>An incoming port is returned from an application's <code>subscriptions</code>.</li>
+            </ul>
+        </li>
+        <li>When there are no available ports, <code>app.ports</code> is <code>undefined</code>.</li>
+        <li>There is no difference with <code>--optimize</code>.</li>
+    </ul>
+    <script src='entry.js'></script>
+</body>
+</html>
