@@ -16,6 +16,7 @@ import Set exposing (Set)
 rule : Rule
 rule =
     Rule.newProjectRuleSchema "NoUnusedPorts" initialProjectContext
+        |> Rule.withContextFromImportedModules
         |> Rule.withModuleVisitor moduleVisitor
         |> Rule.withModuleContext
             { fromProjectToModule = fromProjectToModule
@@ -148,8 +149,9 @@ initialProjectContext =
 type alias ModuleContext =
     { exposed : Exposed
     , functionCalls : Set ( ModuleName, String )
-    , importedFunctions : Dict ( ModuleName, String ) ( ModuleName, String )
     , importedAliases : Dict ModuleName ModuleName
+    , importedFunctions : Dict ( ModuleName, String ) ( ModuleName, String )
+    , projectPorts : Set ( ModuleName, String )
     , ports : Dict String Range
     }
 
@@ -158,15 +160,18 @@ initialModuleContext : ModuleContext
 initialModuleContext =
     { exposed = ExposedList Set.empty
     , functionCalls = Set.empty
-    , importedFunctions = Dict.empty
     , importedAliases = Dict.empty
+    , importedFunctions = Dict.empty
+    , projectPorts = Set.empty
     , ports = Dict.empty
     }
 
 
 fromProjectToModule : Rule.ModuleKey -> Node ModuleName -> ProjectContext -> ModuleContext
-fromProjectToModule _ _ _ =
-    initialModuleContext
+fromProjectToModule _ _ context =
+    { initialModuleContext
+        | projectPorts = context.ports |> Dict.keys |> Set.fromList
+    }
 
 
 fromModuleToProject : Rule.ModuleKey -> Node ModuleName -> ModuleContext -> ProjectContext
@@ -255,6 +260,9 @@ rememberImportedList moduleName exposingList context =
         Just (Exposing.Explicit list) ->
             rememberImportedExplicitList moduleName list context
 
+        Just (Exposing.All _) ->
+            rememberImportedAll moduleName context
+
         _ ->
             context
 
@@ -268,14 +276,30 @@ rememberImportedItem : ModuleName -> Node Exposing.TopLevelExpose -> ModuleConte
 rememberImportedItem moduleName item context =
     case Node.value item of
         Exposing.FunctionExpose name ->
-            rememberImportedFunction moduleName name context
+            rememberImportedFunction ( moduleName, name ) context
 
         _ ->
             context
 
 
-rememberImportedFunction : ModuleName -> String -> ModuleContext -> ModuleContext
-rememberImportedFunction moduleName name context =
+rememberImportedAll : ModuleName -> ModuleContext -> ModuleContext
+rememberImportedAll moduleName context =
+    context
+        |> rememberImportedFunctionSet (filterByModuleName moduleName context.projectPorts)
+
+
+filterByModuleName : ModuleName -> Set ( ModuleName, String ) -> Set ( ModuleName, String )
+filterByModuleName moduleName set =
+    set |> Set.filter (\( name, _ ) -> name == moduleName)
+
+
+rememberImportedFunctionSet : Set ( ModuleName, String ) -> ModuleContext -> ModuleContext
+rememberImportedFunctionSet set context =
+    Set.foldl rememberImportedFunction context set
+
+
+rememberImportedFunction : ( ModuleName, String ) -> ModuleContext -> ModuleContext
+rememberImportedFunction ( moduleName, name ) context =
     { context | importedFunctions = Dict.insert ( [], name ) ( moduleName, name ) context.importedFunctions }
 
 

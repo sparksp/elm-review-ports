@@ -72,6 +72,22 @@ main = P.alarm "play"
                             ]
                           )
                         ]
+        , test "do not report ports used from an import exposing all" <|
+            \_ ->
+                [ portsModule
+                , """
+module Main exposing (main)
+import Ports exposing (..)
+main = alarm "play"
+"""
+                ]
+                    |> Review.Test.runOnModules rule
+                    |> Review.Test.expectErrorsForModules
+                        [ ( "Ports"
+                          , [ unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                            ]
+                          )
+                        ]
         ]
 
 
