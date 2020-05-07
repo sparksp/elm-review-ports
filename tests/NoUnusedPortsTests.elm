@@ -107,9 +107,12 @@ a = 1"""
         , test "do not report outgoing ports that are used" <|
             \_ ->
                 """
-port module Ports exposing (play)
+port module Ports exposing (a)
 port alarm : String -> Cmd msg
+load = alarm "load"
 play = alarm "play"
+stop = alarm "stop"
+a = play
 """
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
@@ -133,6 +136,19 @@ a = action Action
 """
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
+        , test "report when a port is used but the caller is not exposed" <|
+            \_ ->
+                """
+port module Ports exposing (a)
+port alarm : String -> msg
+load = alarm "load"
+play = alarm "play"
+stop = alarm "stop"
+a = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectErrors
+                        [ unusedPortError "alarm" |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
+                        ]
         ]
 
 

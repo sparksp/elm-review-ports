@@ -39,12 +39,7 @@ moduleVisitor schema =
 
 moduleDefinitionVisitor : Node Module -> ModuleContext -> ( List (Error {}), ModuleContext )
 moduleDefinitionVisitor node context =
-    case Node.value node of
-        Module.PortModule { exposingList } ->
-            ( [], rememberExposing exposingList context )
-
-        _ ->
-            ( [], context )
+    ( [], rememberExposing (node |> Node.value |> Module.exposingList) context )
 
 
 importVisitor : Node Import -> ModuleContext -> ( List (Error {}), ModuleContext )
@@ -57,6 +52,17 @@ declarationVisitor node direction context =
     case ( direction, Node.value node ) of
         ( Rule.OnEnter, Declaration.PortDeclaration { name } ) ->
             ( [], rememberPort name context )
+
+        ( Rule.OnEnter, Declaration.FunctionDeclaration { declaration } ) ->
+            let
+                name : String
+                name =
+                    declaration |> Node.value |> .name |> Node.value
+            in
+            ( [], { context | currentFunction = Just name } )
+
+        ( Rule.OnExit, Declaration.FunctionDeclaration _ ) ->
+            ( [], { context | currentFunction = Nothing } )
 
         _ ->
             ( [], context )
@@ -76,7 +82,6 @@ finalModuleEvaluation : ModuleContext -> List (Error {})
 finalModuleEvaluation context =
     context
         |> removeExposedPorts
-        |> removeCalledLocalPorts
         |> reportUnusedLocalPorts
 
 
@@ -131,8 +136,12 @@ type Exposed
 
 type alias ProjectContext =
     { ports : ProjectPorts
-    , functionCalls : Set ( ModuleName, String )
+    , functionCalls : FunctionCalls
     }
+
+
+type alias FunctionCalls =
+    Dict ( ModuleName, String ) (Set String)
 
 
 type alias ProjectPorts =
@@ -142,13 +151,14 @@ type alias ProjectPorts =
 initialProjectContext : ProjectContext
 initialProjectContext =
     { ports = Dict.empty
-    , functionCalls = Set.empty
+    , functionCalls = Dict.empty
     }
 
 
 type alias ModuleContext =
-    { exposed : Exposed
-    , functionCalls : Set ( ModuleName, String )
+    { currentFunction : Maybe String
+    , exposed : Exposed
+    , functionCalls : FunctionCalls
     , importedAliases : Dict ModuleName ModuleName
     , importedFunctions : Dict ( ModuleName, String ) ( ModuleName, String )
     , projectPorts : Set ( ModuleName, String )
@@ -158,8 +168,9 @@ type alias ModuleContext =
 
 initialModuleContext : ModuleContext
 initialModuleContext =
-    { exposed = ExposedList Set.empty
-    , functionCalls = Set.empty
+    { currentFunction = Nothing
+    , exposed = ExposedList Set.empty
+    , functionCalls = Dict.empty
     , importedAliases = Dict.empty
     , importedFunctions = Dict.empty
     , projectPorts = Set.empty
@@ -193,13 +204,18 @@ fromModuleToProjectPort moduleKey moduleName portName portRange dict =
 foldProjectContexts : ProjectContext -> ProjectContext -> ProjectContext
 foldProjectContexts new old =
     { ports = Dict.foldl Dict.insert old.ports new.ports
-    , functionCalls = Set.union old.functionCalls new.functionCalls
+    , functionCalls = Dict.merge Dict.insert mergeFunctionCalls Dict.insert old.functionCalls new.functionCalls Dict.empty
     }
 
 
-rememberExposing : Node Exposing -> ModuleContext -> ModuleContext
-rememberExposing node context =
-    case Node.value node of
+mergeFunctionCalls : ( ModuleName, String ) -> Set String -> Set String -> FunctionCalls -> FunctionCalls
+mergeFunctionCalls function scopeA scopeB =
+    Dict.insert function (Set.union scopeA scopeB)
+
+
+rememberExposing : Exposing -> ModuleContext -> ModuleContext
+rememberExposing exposing_ context =
+    case exposing_ of
         Exposing.Explicit nodes ->
             rememberExposedList nodes context
 
@@ -314,7 +330,22 @@ rememberFunctionCall moduleName name context =
         functionCall =
             expandFunctionCall context ( moduleName, name )
     in
-    { context | functionCalls = Set.insert functionCall context.functionCalls }
+    { context | functionCalls = Dict.update functionCall (updateFunctionCall context.currentFunction) context.functionCalls }
+
+
+updateFunctionCall : Maybe String -> Maybe (Set String) -> Maybe (Set String)
+updateFunctionCall maybeParent maybeParents =
+    let
+        parents : Set String
+        parents =
+            maybeParents |> Maybe.withDefault Set.empty
+    in
+    case maybeParent of
+        Nothing ->
+            Just parents
+
+        Just parent ->
+            Just (Set.insert parent parents)
 
 
 removeExposedPorts : ModuleContext -> ModuleContext
@@ -324,7 +355,28 @@ removeExposedPorts context =
             { context | ports = Dict.empty }
 
         ExposedList list ->
-            { context | ports = Set.foldl Dict.remove context.ports list }
+            { context | ports = Dict.filter (\name _ -> isFunctionNotExposed list context.functionCalls name) context.ports }
+
+
+isFunctionNotExposed : Set String -> FunctionCalls -> String -> Bool
+isFunctionNotExposed exposedList functionCalls name =
+    not (isFunctionExposed exposedList functionCalls name)
+
+
+isFunctionExposed : Set String -> FunctionCalls -> String -> Bool
+isFunctionExposed exposedList functionCalls name =
+    if Set.member name exposedList then
+        True
+
+    else
+        case Dict.get ( [], name ) functionCalls of
+            Nothing ->
+                False
+
+            Just callers ->
+                callers
+                    |> Set.toList
+                    |> List.any (isFunctionExposed exposedList functionCalls)
 
 
 removeLocalPorts : ModuleContext -> ModuleContext
@@ -346,28 +398,19 @@ removeLocalPorts context =
             }
 
 
-getLocalFunctions : Set ( ModuleName, String ) -> Set String
-getLocalFunctions functionCalls =
-    functionCalls
-        |> Set.filter isExternalFunction
-        |> Set.map Tuple.second
-
-
-isExternalFunction : ( ModuleName, String ) -> Bool
-isExternalFunction ( moduleName, _ ) =
-    moduleName == []
-
-
-removeCalledLocalPorts : ModuleContext -> ModuleContext
-removeCalledLocalPorts ({ functionCalls, ports } as context) =
-    { context
-        | ports = functionCalls |> getLocalFunctions |> Set.foldl Dict.remove ports
-    }
-
-
 removeCalledPorts : ProjectContext -> ProjectContext
 removeCalledPorts context =
-    { context | ports = Set.foldl Dict.remove context.ports context.functionCalls }
+    { context | ports = Dict.filter (\name _ -> isPortNotCalled context.functionCalls name) context.ports }
+
+
+isPortNotCalled : FunctionCalls -> ( ModuleName, String ) -> Bool
+isPortNotCalled functionCalls port_ =
+    not (isPortCalled functionCalls port_)
+
+
+isPortCalled : FunctionCalls -> ( ModuleName, String ) -> Bool
+isPortCalled functionCalls port_ =
+    Dict.member port_ functionCalls
 
 
 expandFunctionCall : ModuleContext -> ( ModuleName, String ) -> ( ModuleName, String )
