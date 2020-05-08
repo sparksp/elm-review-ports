@@ -14,11 +14,24 @@ import Elm.Syntax.Range exposing (Range)
 import Review.Rule as Rule exposing (Direction, Error, Rule)
 
 
-{-| Ensure that port names are unique across your project.
+{-| Forbid duplicate port names in your project.
 
-Problem: When there are multiple ports with the same name you may encounter a JavaScript runtime error.
+    config : List Rule
+    config =
+        [ NoDuplicatePorts.rule
+        ]
 
-You should not enable this rule when the project is an Elm package.
+
+## Why is this a problem?
+
+The only way to tell which port you want to address in JavaScript is by its name, and so these must be unique within your project. When there are multiple ports with the same name you may encounter a JavaScript runtime error.
+
+It is common practice to have a single `Ports` module to contain all of the ports in a project. The `Ports` module can then be imported anywhere that needs access to a port.
+
+
+## When (not) to use this rule
+
+Ports are not allowed in Elm packages - you should not enable this when developing an Elm package.
 
 -}
 rule : Rule
@@ -32,6 +45,10 @@ rule =
             }
         |> Rule.withFinalProjectEvaluation finalProjectEvaluation
         |> Rule.fromProjectRuleSchema
+
+
+
+--- INTERNALS
 
 
 moduleVisitor : Rule.ModuleRuleSchema {} ModuleContext -> Rule.ModuleRuleSchema { hasAtLeastOneVisitor : () } ModuleContext
