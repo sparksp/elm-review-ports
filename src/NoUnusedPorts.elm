@@ -1,5 +1,11 @@
 module NoUnusedPorts exposing (rule)
 
+{-|
+
+@docs rule
+
+-}
+
 import Dict exposing (Dict)
 import Elm.Syntax.Declaration as Declaration exposing (Declaration)
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
@@ -13,6 +19,55 @@ import Review.Rule as Rule exposing (Error, Rule)
 import Set exposing (Set)
 
 
+{-| Forbid the use of ports that are never used in your project.
+
+    config : List Rule
+    config =
+        [ NoUnusedPorts.rule
+        ]
+
+This rule reports any ports that are not used _anywhere in the project_. A port is only considered used if it can be traced to an exposed `main` function.
+
+
+## Why is this a problem?
+
+Elm is very good at elimiating dead code from the compiled JavaScript. When a port is unused it will not be present in the compiled JavaScript, and when no ports are used the `app.ports` object will be `undefined`. This may lead to JavaScript runtime errors that could take you some time to figure out.
+
+```javascript
+var app = Elm.Main.init({
+    node: document.getElementById('elm')
+});
+
+app.ports.myPort // undefined
+```
+
+
+## When (not) to use this rule
+
+Ports are not allowed in Elm packages - you should not enable this when developing an Elm package.
+
+It is not currently possible to trace ports if the message goes via a package, if you find a case for this please let me know so I can take a look.
+
+
+## Failure
+
+    port module Main exposing (main)
+
+    import Html
+
+
+    -- `alarm` is unused in the module
+    port alarm : String -> msg
+
+    -- although `alarm` is used here, `play` is not used
+    play : Cmd msg
+    play =
+        alarm "play"
+
+    main =
+        Html.text "Hello"
+
+-}
 rule : Rule
 rule =
     Rule.newProjectRuleSchema "NoUnusedPorts" initialProjectContext
@@ -25,6 +80,10 @@ rule =
             }
         |> Rule.withFinalProjectEvaluation finalEvaluation
         |> Rule.fromProjectRuleSchema
+
+
+
+--- VISITORS
 
 
 moduleVisitor : Rule.ModuleRuleSchema {} ModuleContext -> Rule.ModuleRuleSchema { hasAtLeastOneVisitor : () } ModuleContext
