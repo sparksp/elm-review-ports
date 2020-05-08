@@ -24,7 +24,7 @@ main = "Hello"
                             ]
                           )
                         ]
-        , test "do not report when ports are used in another module" <|
+        , test "do not report when ports are used from an import" <|
             \_ ->
                 [ portsModule
                 , """
@@ -40,7 +40,7 @@ main = Ports.alarm "play"
                             ]
                           )
                         ]
-        , test "do not report imported ports that are exposed" <|
+        , test "do not report ports used from an exposed import" <|
             \_ ->
                 [ portsModule
                 , """
@@ -88,6 +88,24 @@ main = alarm "play"
                             ]
                           )
                         ]
+        , test "report ports used from an import but not exposed" <|
+            \_ ->
+                [ portsModule
+                , """
+module Main exposing (main)
+import Ports
+main = 1
+unused = Ports.alarm "play"
+"""
+                ]
+                    |> Review.Test.runOnModules rule
+                    |> Review.Test.expectErrorsForModules
+                        [ ( "Ports"
+                          , [ unusedPortError "alarm" |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
+                            , unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                            ]
+                          )
+                        ]
         ]
 
 
@@ -107,12 +125,12 @@ a = 1"""
         , test "do not report outgoing ports that are used" <|
             \_ ->
                 """
-port module Ports exposing (a)
+port module Ports exposing (main)
 port alarm : String -> Cmd msg
 load = alarm "load"
 play = alarm "play"
 stop = alarm "stop"
-a = play
+main = play
 """
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
@@ -129,10 +147,10 @@ a = 1"""
         , test "do not report incoming ports that are used" <|
             \_ ->
                 """
-port module Ports exposing (a)
+port module Ports exposing (main)
 port action : (String -> msg) -> Sub msg
 type ActionMsg = Action String
-a = action Action
+main = action Action
 """
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
@@ -152,15 +170,6 @@ a = 1"""
         ]
 
 
-unusedPortError : String -> Review.Test.ExpectedError
-unusedPortError name =
-    Review.Test.error
-        { message = "Port `" ++ name ++ "` is not used anywhere."
-        , details = [ "TODO: This is a problem because..." ]
-        , under = name
-        }
-
-
 all : Test
 all =
     describe "NoUnusedPorts"
@@ -171,6 +180,15 @@ all =
 
 
 --- HELPERS
+
+
+unusedPortError : String -> Review.Test.ExpectedError
+unusedPortError name =
+    Review.Test.error
+        { message = "Port `" ++ name ++ "` is not used anywhere."
+        , details = [ "TODO: This is a problem because..." ]
+        , under = name
+        }
 
 
 portsModule : String
