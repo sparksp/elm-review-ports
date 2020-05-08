@@ -46,8 +46,6 @@ app.ports.myPort // undefined
 
 Ports are not allowed in Elm packages - you should not enable this when developing an Elm package.
 
-It is not currently possible to trace ports if the message goes via a package, if you find a case for this please let me know so I can take a look.
-
 
 ## Failure
 
