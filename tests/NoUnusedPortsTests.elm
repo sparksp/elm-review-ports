@@ -106,6 +106,40 @@ unused = Ports.alarm "play"
                             ]
                           )
                         ]
+        , test "report ports used from an import but main is not exposed" <|
+            \_ ->
+                [ portsModule
+                , """
+module Main exposing (a)
+import Ports
+main = Ports.alarm "play"
+a = 1
+"""
+                ]
+                    |> Review.Test.runOnModules rule
+                    |> Review.Test.expectErrorsForModules
+                        [ ( "Ports"
+                          , [ unusedPortError "alarm" |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
+                            , unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                            ]
+                          )
+                        ]
+        , test "do not report ports used from an import when everything is exposed" <|
+            \_ ->
+                [ portsModule
+                , """
+module Main exposing (..)
+import Ports
+main = Ports.alarm "play"
+"""
+                ]
+                    |> Review.Test.runOnModules rule
+                    |> Review.Test.expectErrorsForModules
+                        [ ( "Ports"
+                          , [ unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                            ]
+                          )
+                        ]
         ]
 
 

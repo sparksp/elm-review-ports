@@ -375,8 +375,12 @@ isPortUsed context name =
 isFunctionCalledViaMain : ModuleContext -> String -> Bool
 isFunctionCalledViaMain context name =
     if name == "main" then
-        -- is main exposed?
-        True
+        case context.exposed of
+            ExposedAll ->
+                True
+
+            ExposedList list ->
+                Set.member name list
 
     else
         case Dict.get ( [], name ) context.functionCalls of
