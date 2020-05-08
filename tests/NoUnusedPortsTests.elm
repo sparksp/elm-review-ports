@@ -152,21 +152,53 @@ main = Ports.alarm "play"
             \_ ->
                 [ portsModule
                 , """
-module Page exposing (update)
+module Worker exposing (init, subscriptions, update)
+
 import Ports
-update = Ports.alarm "play"
+
+
+type Model
+    = Count Int
+
+
+type Msg
+    = Up
+    | Down
+    | GotAction String
+
+
+init : () -> Model
+init () =
+    Count 1
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    ( model, Ports.alarm "play" )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Ports.action GotAction
 """
                 , """
 module Main exposing (main)
-import Page
-main = Page.update
+
+import Worker
+
+
+main =
+    Platform.worker
+        { init = Worker.init
+        , update = Worker.update
+        , subscriptions = Worker.subscriptions
+        }
 """
                 ]
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
-                          , [ unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
-                            , unusedPortError "unused"
+                          , [ unusedPortError "unused"
                             ]
                           )
                         ]
