@@ -58,7 +58,7 @@ declarationVisitor node direction context =
                 name =
                     declaration |> Node.value |> .name |> Node.value
             in
-            ( [], { context | currentFunction = Just name } )
+            ( [], rememberCurrentFunction ( context.moduleName, name ) context )
 
         ( Rule.OnExit, Declaration.FunctionDeclaration _ ) ->
             ( [], { context | currentFunction = Nothing } )
@@ -127,7 +127,7 @@ type alias ProjectContext =
 
 
 type alias FunctionCalls =
-    Dict ( ModuleName, String ) (Set String)
+    Dict ( ModuleName, String ) (Set ( ModuleName, String ))
 
 
 type alias ProjectPorts =
@@ -143,7 +143,7 @@ initialProjectContext =
 
 
 type alias ModuleContext =
-    { currentFunction : Maybe String
+    { currentFunction : Maybe ( ModuleName, String )
     , exposed : Exposed
     , functionCalls : FunctionCalls
     , importedAliases : Dict ModuleName ModuleName
@@ -154,11 +154,11 @@ type alias ModuleContext =
     }
 
 
-initialModuleContext : { moduleKey : Rule.ModuleKey, moduleName : ModuleName, ports : ProjectPorts } -> ModuleContext
-initialModuleContext { moduleKey, moduleName, ports } =
+initialModuleContext : { functionCalls : FunctionCalls, moduleKey : Rule.ModuleKey, moduleName : ModuleName, ports : ProjectPorts } -> ModuleContext
+initialModuleContext { functionCalls, moduleKey, moduleName, ports } =
     { currentFunction = Nothing
     , exposed = ExposedList Set.empty
-    , functionCalls = Dict.empty
+    , functionCalls = functionCalls
     , importedAliases = Dict.empty
     , importedFunctions = Dict.empty
     , moduleKey = moduleKey
@@ -170,7 +170,8 @@ initialModuleContext { moduleKey, moduleName, ports } =
 fromProjectToModule : Rule.ModuleKey -> Node ModuleName -> ProjectContext -> ModuleContext
 fromProjectToModule moduleKey moduleName context =
     initialModuleContext
-        { moduleKey = moduleKey
+        { functionCalls = context.functionCalls
+        , moduleKey = moduleKey
         , moduleName = Node.value moduleName
         , ports = context.ports
         }
@@ -204,7 +205,7 @@ removeUsedPorts context =
     }
 
 
-mergeFunctionCalls : ( ModuleName, String ) -> Set String -> Set String -> FunctionCalls -> FunctionCalls
+mergeFunctionCalls : ( ModuleName, String ) -> Set ( ModuleName, String ) -> Set ( ModuleName, String ) -> FunctionCalls -> FunctionCalls
 mergeFunctionCalls function scopeA scopeB =
     Dict.insert function (Set.union scopeA scopeB)
 
@@ -325,6 +326,12 @@ rememberPort node context =
         |> rememberImportedFunction portName
 
 
+rememberCurrentFunction : ( ModuleName, String ) -> ModuleContext -> ModuleContext
+rememberCurrentFunction function context =
+    { context | currentFunction = Just function }
+        |> rememberImportedFunction function
+
+
 rememberFunctionCall : ModuleName -> String -> ModuleContext -> ModuleContext
 rememberFunctionCall moduleName name context =
     let
@@ -334,10 +341,10 @@ rememberFunctionCall moduleName name context =
     { context | functionCalls = Dict.update functionCall (updateFunctionCall context.currentFunction) context.functionCalls }
 
 
-updateFunctionCall : Maybe String -> Maybe (Set String) -> Maybe (Set String)
+updateFunctionCall : Maybe comparable -> Maybe (Set comparable) -> Maybe (Set comparable)
 updateFunctionCall maybeParent maybeParents =
     let
-        parents : Set String
+        parents : Set comparable
         parents =
             maybeParents |> Maybe.withDefault Set.empty
     in
@@ -359,8 +366,8 @@ isPortUsed context name =
             callers |> Set.toList |> List.any (isFunctionCalledViaMain context)
 
 
-isFunctionCalledViaMain : ModuleContext -> String -> Bool
-isFunctionCalledViaMain context name =
+isFunctionCalledViaMain : ModuleContext -> ( ModuleName, String ) -> Bool
+isFunctionCalledViaMain context ( moduleName, name ) =
     if name == "main" then
         case context.exposed of
             ExposedAll ->
@@ -370,7 +377,7 @@ isFunctionCalledViaMain context name =
                 Set.member name list
 
     else
-        case Dict.get ( [], name ) context.functionCalls of
+        case Dict.get ( moduleName, name ) context.functionCalls of
             Nothing ->
                 False
 

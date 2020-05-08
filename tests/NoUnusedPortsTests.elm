@@ -148,6 +148,28 @@ main = Ports.alarm "play"
                             ]
                           )
                         ]
+        , test "do not report port used via many modules" <|
+            \_ ->
+                [ portsModule
+                , """
+module Page exposing (update)
+import Ports
+update = Ports.alarm "play"
+"""
+                , """
+module Main exposing (main)
+import Page
+main = Page.update
+"""
+                ]
+                    |> Review.Test.runOnModules rule
+                    |> Review.Test.expectErrorsForModules
+                        [ ( "Ports"
+                          , [ unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                            , unusedPortError "unused"
+                            ]
+                          )
+                        ]
         ]
 
 
