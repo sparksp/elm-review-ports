@@ -148,6 +148,31 @@ main = Ports.alarm "play"
                             ]
                           )
                         ]
+        , test "report ports called via an unused private main" <|
+            \_ ->
+                [ portsModule
+                , """
+module Page.Alarm exposing (update)
+
+import Ports
+
+main = Ports.alarm "play"
+update = main
+"""
+                , """
+module Main exposing (main)
+main = 1
+"""
+                ]
+                    |> Review.Test.runOnModules rule
+                    |> Review.Test.expectErrorsForModules
+                        [ ( "Ports"
+                          , [ unusedPortError "alarm" |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
+                            , unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                            , unusedPortError "unused"
+                            ]
+                          )
+                        ]
         , test "do not report port used via many modules" <|
             \_ ->
                 [ portsModule

@@ -368,13 +368,8 @@ isPortUsed context name =
 
 isFunctionCalledViaMain : ModuleContext -> ( ModuleName, String ) -> Bool
 isFunctionCalledViaMain context ( moduleName, name ) =
-    if name == "main" then
-        case context.exposed of
-            ExposedAll ->
-                True
-
-            ExposedList list ->
-                Set.member name list
+    if ( moduleName, name ) == ( context.moduleName, "main" ) then
+        isFunctionExposed context.exposed name
 
     else
         case Dict.get ( moduleName, name ) context.functionCalls of
@@ -383,6 +378,16 @@ isFunctionCalledViaMain context ( moduleName, name ) =
 
             Just callers ->
                 callers |> Set.toList |> List.any (isFunctionCalledViaMain context)
+
+
+isFunctionExposed : Exposed -> String -> Bool
+isFunctionExposed exposed name =
+    case exposed of
+        ExposedAll ->
+            True
+
+        ExposedList list ->
+            Set.member name list
 
 
 expandFunctionCall : ModuleContext -> ( ModuleName, String ) -> ( ModuleName, String )
