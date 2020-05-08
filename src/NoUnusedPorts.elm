@@ -94,8 +94,8 @@ reportUnusedPorts { ports } =
         |> List.map reportUnusedPort
 
 
-reportUnusedPort : ( ( ModuleName, String ), ( Rule.ModuleKey, Range ) ) -> Error scope
-reportUnusedPort ( ( _, portName ), ( moduleKey, range ) ) =
+reportUnusedPort : ( ( ModuleName, String ), Port ) -> Error scope
+reportUnusedPort ( ( _, portName ), Port range moduleKey ) =
     Rule.errorForModule moduleKey (report portName) range
 
 
@@ -111,8 +111,7 @@ report portName =
 
 
 type Port
-    = ModulePort Range
-    | ProjectPort Range Rule.ModuleKey
+    = Port Range Rule.ModuleKey
 
 
 type Exposed
@@ -132,7 +131,7 @@ type alias FunctionCalls =
 
 
 type alias ProjectPorts =
-    Dict ( ModuleName, String ) ( Rule.ModuleKey, Range )
+    Dict ( ModuleName, String ) Port
 
 
 initialProjectContext : ProjectContext
@@ -149,56 +148,44 @@ type alias ModuleContext =
     , functionCalls : FunctionCalls
     , importedAliases : Dict ModuleName ModuleName
     , importedFunctions : Dict ( ModuleName, String ) ( ModuleName, String )
+    , moduleKey : Rule.ModuleKey
     , moduleName : ModuleName
-    , ports : Dict ( ModuleName, String ) Port
+    , ports : ProjectPorts
     }
 
 
-initialModuleContext : { moduleName : ModuleName, ports : Dict ( ModuleName, String ) Port } -> ModuleContext
-initialModuleContext { moduleName, ports } =
+initialModuleContext : { moduleKey : Rule.ModuleKey, moduleName : ModuleName, ports : ProjectPorts } -> ModuleContext
+initialModuleContext { moduleKey, moduleName, ports } =
     { currentFunction = Nothing
     , exposed = ExposedList Set.empty
     , functionCalls = Dict.empty
     , importedAliases = Dict.empty
     , importedFunctions = Dict.empty
+    , moduleKey = moduleKey
     , moduleName = moduleName
     , ports = ports
     }
 
 
 fromProjectToModule : Rule.ModuleKey -> Node ModuleName -> ProjectContext -> ModuleContext
-fromProjectToModule _ moduleName context =
+fromProjectToModule moduleKey moduleName context =
     initialModuleContext
-        { moduleName = Node.value moduleName
-        , ports = context.ports |> Dict.map (\_ ( key, range ) -> ProjectPort range key)
+        { moduleKey = moduleKey
+        , moduleName = Node.value moduleName
+        , ports = context.ports
         }
 
 
 fromModuleToProject : Rule.ModuleKey -> Node ModuleName -> ModuleContext -> ProjectContext
-fromModuleToProject moduleKey _ context =
+fromModuleToProject _ _ context =
     let
         ( used, unused ) =
             Dict.partition (\name _ -> isPortUsed context name) context.ports
     in
     { functionCalls = context.functionCalls
-    , ports = unused |> fromModuleToProjectPorts moduleKey
-    , usedPorts = used |> fromModuleToProjectPorts moduleKey
+    , ports = unused
+    , usedPorts = used
     }
-
-
-fromModuleToProjectPorts : Rule.ModuleKey -> Dict ( ModuleName, String ) Port -> ProjectPorts
-fromModuleToProjectPorts moduleKey modulePorts =
-    modulePorts |> Dict.foldl (fromModuleToProjectPort moduleKey) Dict.empty
-
-
-fromModuleToProjectPort : Rule.ModuleKey -> ( ModuleName, String ) -> Port -> ProjectPorts -> ProjectPorts
-fromModuleToProjectPort moduleKey portName port_ dict =
-    case port_ of
-        ModulePort range ->
-            Dict.insert portName ( moduleKey, range ) dict
-
-        ProjectPort range key ->
-            Dict.insert portName ( key, range ) dict
 
 
 foldProjectContexts : ProjectContext -> ProjectContext -> ProjectContext
@@ -334,7 +321,7 @@ rememberPort node context =
         portName =
             ( context.moduleName, Node.value node )
     in
-    { context | ports = Dict.insert portName (ModulePort (Node.range node)) context.ports }
+    { context | ports = Dict.insert portName (Port (Node.range node) context.moduleKey) context.ports }
         |> rememberImportedFunction portName
 
 
