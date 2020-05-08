@@ -56,10 +56,12 @@ It is not currently possible to trace ports if the message goes via a package, i
     import Html
 
 
-    -- `alarm` is unused in the module
+    -- Port `action` is never used.
+    port action : (String -> msg) -> Sub msg
+
     port alarm : String -> msg
 
-    -- although `alarm` is used here, `play` is not used
+    -- Port `alarm` is never used, because `play` is never used.
     play : Cmd msg
     play =
         alarm "play"
