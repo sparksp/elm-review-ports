@@ -157,8 +157,11 @@ reportUnusedPort ( ( _, portName ), Port range moduleKey ) =
 
 report : String -> { message : String, details : List String }
 report portName =
-    { message = "Port `" ++ portName ++ "` is not used anywhere."
-    , details = [ "TODO: This is a problem because..." ]
+    { message = "Port `" ++ portName ++ "` is never used."
+    , details =
+        [ "This port is never used. You may want to remove it to keep your project clean, and maybe detect some unused code in your project."
+        , "Unused ports are not available in the compiled JavaScript and may cause runtime errors if you try to access them."
+        ]
     }
 
 

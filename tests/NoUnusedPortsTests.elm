@@ -306,8 +306,11 @@ all =
 unusedPortError : String -> Review.Test.ExpectedError
 unusedPortError name =
     Review.Test.error
-        { message = "Port `" ++ name ++ "` is not used anywhere."
-        , details = [ "TODO: This is a problem because..." ]
+        { message = "Port `" ++ name ++ "` is never used."
+        , details =
+            [ "This port is never used. You may want to remove it to keep your project clean, and maybe detect some unused code in your project."
+            , "Unused ports are not available in the compiled JavaScript and may cause runtime errors if you try to access them."
+            ]
         , under = name
         }
 
