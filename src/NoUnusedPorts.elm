@@ -71,27 +71,24 @@ expressionVisitor : Node Expression -> Rule.Direction -> ModuleContext -> ( List
 expressionVisitor node direction context =
     case ( direction, Node.value node ) of
         ( Rule.OnEnter, Expression.FunctionOrValue moduleName name ) ->
-            ( [], rememberFunctionCall moduleName name context )
+            ( [], rememberFunctionCall ( moduleName, name ) context )
 
         _ ->
             ( [], context )
 
 
 finalEvaluation : ProjectContext -> List (Error scope)
-finalEvaluation context =
-    context
-        |> reportUnusedPorts
+finalEvaluation { ports } =
+    ports |> reportUnusedPorts
 
 
 
 --- REPORT
 
 
-reportUnusedPorts : ProjectContext -> List (Error scope)
-reportUnusedPorts { ports } =
-    ports
-        |> Dict.toList
-        |> List.map reportUnusedPort
+reportUnusedPorts : ProjectPorts -> List (Error scope)
+reportUnusedPorts ports =
+    ports |> Dict.toList |> List.map reportUnusedPort
 
 
 reportUnusedPort : ( ( ModuleName, String ), Port ) -> Error scope
@@ -190,24 +187,35 @@ fromModuleToProject _ _ context =
 
 
 foldProjectContexts : ProjectContext -> ProjectContext -> ProjectContext
-foldProjectContexts new old =
-    { functionCalls = Dict.merge Dict.insert mergeFunctionCalls Dict.insert old.functionCalls new.functionCalls Dict.empty
-    , ports = Dict.foldl Dict.insert new.ports old.ports
-    , usedPorts = Dict.foldl Dict.insert new.usedPorts old.usedPorts
-    }
-        |> removeUsedPorts
-
-
-removeUsedPorts : ProjectContext -> ProjectContext
-removeUsedPorts context =
-    { context
-        | ports = Dict.foldl (\k _ -> Dict.remove k) context.ports context.usedPorts
+foldProjectContexts a b =
+    let
+        usedPorts =
+            mergePorts a.usedPorts b.usedPorts
+    in
+    { functionCalls = mergeFunctionCalls a.functionCalls b.functionCalls
+    , ports = mergePorts a.ports b.ports |> removePorts usedPorts
+    , usedPorts = usedPorts
     }
 
 
-mergeFunctionCalls : ( ModuleName, String ) -> Set ( ModuleName, String ) -> Set ( ModuleName, String ) -> FunctionCalls -> FunctionCalls
-mergeFunctionCalls function scopeA scopeB =
-    Dict.insert function (Set.union scopeA scopeB)
+mergeFunctionCalls : FunctionCalls -> FunctionCalls -> FunctionCalls
+mergeFunctionCalls a b =
+    Dict.merge Dict.insert insertUnion Dict.insert a b Dict.empty
+
+
+insertUnion : ( ModuleName, String ) -> Set ( ModuleName, String ) -> Set ( ModuleName, String ) -> FunctionCalls -> FunctionCalls
+insertUnion function a b =
+    Dict.insert function (Set.union a b)
+
+
+mergePorts : ProjectPorts -> ProjectPorts -> ProjectPorts
+mergePorts a b =
+    Dict.foldl Dict.insert a b
+
+
+removePorts : ProjectPorts -> ProjectPorts -> ProjectPorts
+removePorts remove ports =
+    Dict.diff ports remove
 
 
 rememberExposing : Exposing -> ModuleContext -> ModuleContext
@@ -298,16 +306,11 @@ rememberImportedItem moduleName item context =
 rememberImportedAll : ModuleName -> ModuleContext -> ModuleContext
 rememberImportedAll moduleName context =
     context
-        |> rememberImportedFunctionSet (filterByModuleName moduleName (Dict.keys context.ports))
+        |> rememberImportedFunctionList (filterByFirst moduleName (Dict.keys context.ports))
 
 
-filterByModuleName : ModuleName -> List ( ModuleName, String ) -> List ( ModuleName, String )
-filterByModuleName moduleName functions =
-    functions |> List.filter (\( name, _ ) -> name == moduleName)
-
-
-rememberImportedFunctionSet : List ( ModuleName, String ) -> ModuleContext -> ModuleContext
-rememberImportedFunctionSet functions context =
+rememberImportedFunctionList : List ( ModuleName, String ) -> ModuleContext -> ModuleContext
+rememberImportedFunctionList functions context =
     functions |> List.foldl rememberImportedFunction context
 
 
@@ -332,28 +335,13 @@ rememberCurrentFunction function context =
         |> rememberImportedFunction function
 
 
-rememberFunctionCall : ModuleName -> String -> ModuleContext -> ModuleContext
-rememberFunctionCall moduleName name context =
+rememberFunctionCall : ( ModuleName, String ) -> ModuleContext -> ModuleContext
+rememberFunctionCall function context =
     let
         functionCall =
-            expandFunctionCall context ( moduleName, name )
+            expandFunctionCall context function
     in
-    { context | functionCalls = Dict.update functionCall (updateFunctionCall context.currentFunction) context.functionCalls }
-
-
-updateFunctionCall : Maybe comparable -> Maybe (Set comparable) -> Maybe (Set comparable)
-updateFunctionCall maybeParent maybeParents =
-    let
-        parents : Set comparable
-        parents =
-            maybeParents |> Maybe.withDefault Set.empty
-    in
-    case maybeParent of
-        Nothing ->
-            Just parents
-
-        Just parent ->
-            Just (Set.insert parent parents)
+    { context | functionCalls = Dict.update functionCall (maybeSetInsert context.currentFunction) context.functionCalls }
 
 
 isPortUsed : ModuleContext -> ( ModuleName, String ) -> Bool
@@ -363,7 +351,7 @@ isPortUsed context name =
             False
 
         Just callers ->
-            callers |> Set.toList |> List.any (isFunctionCalledViaMain context)
+            setAny (isFunctionCalledViaMain context) callers
 
 
 isFunctionCalledViaMain : ModuleContext -> ( ModuleName, String ) -> Bool
@@ -377,7 +365,7 @@ isFunctionCalledViaMain context ( moduleName, name ) =
                 False
 
             Just callers ->
-                callers |> Set.toList |> List.any (isFunctionCalledViaMain context)
+                setAny (isFunctionCalledViaMain context) callers
 
 
 isFunctionExposed : Exposed -> String -> Bool
@@ -391,15 +379,38 @@ isFunctionExposed exposed name =
 
 
 expandFunctionCall : ModuleContext -> ( ModuleName, String ) -> ( ModuleName, String )
-expandFunctionCall context ( moduleName, function ) =
-    Dict.get ( moduleName, function ) context.importedFunctions
+expandFunctionCall { importedFunctions, importedAliases } ( moduleName, function ) =
+    Dict.get ( moduleName, function ) importedFunctions
         |> Maybe.withDefault ( moduleName, function )
-        |> expandModuleName context
+        |> expandModuleName importedAliases
 
 
-expandModuleName : ModuleContext -> ( ModuleName, String ) -> ( ModuleName, String )
-expandModuleName context ( moduleName, function ) =
-    ( Dict.get moduleName context.importedAliases
+expandModuleName : Dict ModuleName ModuleName -> ( ModuleName, String ) -> ( ModuleName, String )
+expandModuleName importedAliases ( moduleName, function ) =
+    ( Dict.get moduleName importedAliases
         |> Maybe.withDefault moduleName
     , function
     )
+
+
+filterByFirst : a -> List ( a, b ) -> List ( a, b )
+filterByFirst first tuples =
+    tuples |> List.filter (\( value, _ ) -> value == first)
+
+
+maybeSetInsert : Maybe comparable -> Maybe (Set comparable) -> Maybe (Set comparable)
+maybeSetInsert maybeItem maybeSet =
+    case ( maybeItem, maybeSet ) of
+        ( Nothing, _ ) ->
+            maybeSet
+
+        ( Just item, Nothing ) ->
+            Just (Set.singleton item)
+
+        ( Just item, Just set ) ->
+            Just (Set.insert item set)
+
+
+setAny : (t -> Bool) -> Set t -> Bool
+setAny comp set =
+    set |> Set.toList |> List.any comp
