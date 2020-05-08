@@ -1,6 +1,6 @@
 {
   "name": "review-ports",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Review checks for your Elm ports",
   "repository": "https://github.com/github:sparksp/elm-review-ports",
   "author": "Phill Sparks <me@phills.me.uk>",
