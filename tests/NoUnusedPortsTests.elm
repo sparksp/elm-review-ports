@@ -226,7 +226,11 @@ init () =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Ports.alarm "play" )
+    ( model, play )
+
+
+play : Cmd Msg
+play = Ports.alarm "play"
 
 
 subscriptions : Model -> Sub Msg

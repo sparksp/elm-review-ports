@@ -123,9 +123,6 @@ declarationVisitor node direction context =
             in
             ( [], rememberCurrentFunction ( context.moduleName, name ) context )
 
-        ( Rule.OnExit, Declaration.FunctionDeclaration _ ) ->
-            ( [], forgetCurrentFunction context )
-
         _ ->
             ( [], context )
 
@@ -243,18 +240,6 @@ fromProjectToModule moduleKey moduleName context =
         }
 
 
-fromModuleToProject : Rule.ModuleKey -> Node ModuleName -> ModuleContext -> ProjectContext
-fromModuleToProject _ _ context =
-    let
-        ( used, unused ) =
-            findUsedPorts context
-    in
-    { functionCalls = context.functionCalls
-    , ports = unused
-    , usedPorts = used
-    }
-
-
 type alias SearchData =
     { calls : Set ( ModuleName, String )
     , functionCalls : FunctionCalls
@@ -262,54 +247,80 @@ type alias SearchData =
     }
 
 
-findUsedPorts : ModuleContext -> ( ProjectPorts, ProjectPorts )
-findUsedPorts { functionCalls, importedFunctions, moduleName, ports } =
-    if Dict.get ( [], "main" ) importedFunctions /= Just ( moduleName, "main" ) then
-        -- Debug.log "stop: no local main function" <|
-        ( Dict.empty, ports )
-
-    else
-        let
-            finder =
-                findUsedPort
-                    { calls = Set.empty
-                    , functionCalls = functionCalls
-                    , main = ( moduleName, "main" )
-                    }
-
-            used =
-                Dict.foldl finder Set.empty ports
-        in
-        Dict.partition (\name _ -> Set.member name used) ports
+type alias SearchContext =
+    { calls : FunctionCalls
+    , used : Set ( ModuleName, String )
+    }
 
 
-findUsedPort : SearchData -> ( ModuleName, String ) -> Port -> Set ( ModuleName, String ) -> Set ( ModuleName, String )
+fromModuleToProject : Rule.ModuleKey -> Node ModuleName -> ModuleContext -> ProjectContext
+fromModuleToProject _ _ { functionCalls, moduleName, ports } =
+    let
+        finder =
+            findUsedPort
+                { calls = Set.empty
+                , functionCalls = functionCalls
+                , main = ( moduleName, "main" )
+                }
+
+        { used, calls } =
+            Dict.foldl finder (SearchContext Dict.empty Set.empty) ports
+
+        ( usedPorts, unusedPorts ) =
+            Dict.partition (\name _ -> Set.member name used) ports
+    in
+    { functionCalls = calls
+    , ports = unusedPorts
+    , usedPorts = usedPorts
+    }
+
+
+findUsedPort : SearchData -> ( ModuleName, String ) -> Port -> SearchContext -> SearchContext
 findUsedPort data portName _ context =
-    findUsedFunction data portName context
+    findUsedFunction portName data portName context
 
 
-findUsedFunction : SearchData -> ( ModuleName, String ) -> Set ( ModuleName, String ) -> Set ( ModuleName, String )
-findUsedFunction ({ calls, functionCalls, main } as data) function used =
+findUsedFunction : ( ModuleName, String ) -> SearchData -> ( ModuleName, String ) -> SearchContext -> SearchContext
+findUsedFunction portName ({ calls, functionCalls, main } as data) function ({ used } as context) =
     if function == main then
         -- Debug.log "stop: found main" <|
-        Set.union calls used
+        { context | used = Set.union calls used }
 
     else if Set.member function used then
         -- Debug.log "stop: found a used function" <|
-        Set.union calls used
+        { context | used = Set.union calls used }
 
     else if Set.member function calls then
         -- Debug.log "stop: recursion" <|
-        used
+        { context | calls = updateCalls portName function context.calls }
 
     else
         case Dict.get function functionCalls of
             Nothing ->
                 -- Debug.log "stop: function unused" <|
-                used
+                { context | calls = updateCalls portName function context.calls }
 
             Just callers ->
-                Set.foldl (findUsedFunction { data | calls = Set.insert function calls }) used callers
+                Set.foldl (findUsedFunction portName { data | calls = Set.insert function calls }) context callers
+
+
+updateCalls : ( ModuleName, String ) -> ( ModuleName, String ) -> FunctionCalls -> FunctionCalls
+updateCalls portName function functionCalls =
+    if portName == function then
+        functionCalls
+
+    else
+        Dict.update portName (insertOrSetFunctionCall function) functionCalls
+
+
+insertOrSetFunctionCall : ( ModuleName, String ) -> Maybe (Set ( ModuleName, String )) -> Maybe (Set ( ModuleName, String ))
+insertOrSetFunctionCall item maybeSet =
+    case maybeSet of
+        Nothing ->
+            Just (Set.singleton item)
+
+        Just set ->
+            Just (Set.insert item set)
 
 
 foldProjectContexts : ProjectContext -> ProjectContext -> ProjectContext
@@ -476,11 +487,6 @@ rememberPort node declaration context =
 rememberCurrentFunction : ( ModuleName, String ) -> ModuleContext -> ModuleContext
 rememberCurrentFunction function context =
     { context | currentFunction = Just function }
-
-
-forgetCurrentFunction : ModuleContext -> ModuleContext
-forgetCurrentFunction context =
-    { context | currentFunction = Nothing }
 
 
 rememberFunctionCall : ( ModuleName, String ) -> ModuleContext -> ModuleContext
