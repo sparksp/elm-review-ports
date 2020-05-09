@@ -247,12 +247,73 @@ fromModuleToProject : Rule.ModuleKey -> Node ModuleName -> ModuleContext -> Proj
 fromModuleToProject _ _ context =
     let
         ( used, unused ) =
-            Dict.partition (\name _ -> isPortUsed context name) context.ports
+            findUsedPorts context
     in
     { functionCalls = context.functionCalls
     , ports = unused
     , usedPorts = used
     }
+
+
+type alias SearchData =
+    { calls : Set ( ModuleName, String )
+    , functionCalls : FunctionCalls
+    , main : ( ModuleName, String )
+    }
+
+
+findUsedPorts : ModuleContext -> ( ProjectPorts, ProjectPorts )
+findUsedPorts { exposed, functionCalls, importedFunctions, moduleName, ports } =
+    if Dict.get ( [], "main" ) importedFunctions /= Just ( moduleName, "main" ) then
+        -- Debug.log "stop: no local main function" <|
+        ( Dict.empty, ports )
+
+    else if not <| isFunctionExposed exposed "main" then
+        -- Debug.log "stop: no main exposed" <|
+        ( Dict.empty, ports )
+
+    else
+        let
+            finder =
+                findUsedPort
+                    { calls = Set.empty
+                    , functionCalls = functionCalls
+                    , main = ( moduleName, "main" )
+                    }
+
+            used =
+                Dict.foldl finder Set.empty ports
+        in
+        Dict.partition (\name _ -> Set.member name used) ports
+
+
+findUsedPort : SearchData -> ( ModuleName, String ) -> Port -> Set ( ModuleName, String ) -> Set ( ModuleName, String )
+findUsedPort data portName _ context =
+    findUsedFunction data portName context
+
+
+findUsedFunction : SearchData -> ( ModuleName, String ) -> Set ( ModuleName, String ) -> Set ( ModuleName, String )
+findUsedFunction ({ calls, functionCalls, main } as data) function used =
+    if function == main then
+        -- Debug.log "stop: found main" <|
+        Set.union calls used
+
+    else if Set.member function used then
+        -- Debug.log "stop: found a used function" <|
+        Set.union calls used
+
+    else if Set.member function calls then
+        -- Debug.log "stop: recursion" <|
+        used
+
+    else
+        case Dict.get function functionCalls of
+            Nothing ->
+                -- Debug.log "stop: function unused" <|
+                used
+
+            Just callers ->
+                Set.foldl (findUsedFunction { data | calls = Set.insert function calls }) used callers
 
 
 foldProjectContexts : ProjectContext -> ProjectContext -> ProjectContext
@@ -435,30 +496,6 @@ rememberFunctionCall function context =
     { context | functionCalls = Dict.update functionCall (maybeSetInsert context.currentFunction) context.functionCalls }
 
 
-isPortUsed : ModuleContext -> ( ModuleName, String ) -> Bool
-isPortUsed context name =
-    case Dict.get name context.functionCalls of
-        Nothing ->
-            False
-
-        Just callers ->
-            setAny (isFunctionCalledViaMain context) callers
-
-
-isFunctionCalledViaMain : ModuleContext -> ( ModuleName, String ) -> Bool
-isFunctionCalledViaMain context ( moduleName, name ) =
-    if ( moduleName, name ) == ( context.moduleName, "main" ) then
-        isFunctionExposed context.exposed name
-
-    else
-        case Dict.get ( moduleName, name ) context.functionCalls of
-            Nothing ->
-                False
-
-            Just callers ->
-                setAny (isFunctionCalledViaMain context) callers
-
-
 isFunctionExposed : Exposed -> String -> Bool
 isFunctionExposed exposed name =
     case exposed of
@@ -500,8 +537,3 @@ maybeSetInsert maybeItem maybeSet =
 
         ( Just item, Just set ) ->
             Just (Set.insert item set)
-
-
-setAny : (t -> Bool) -> Set t -> Bool
-setAny comp set =
-    set |> Set.toList |> List.any comp

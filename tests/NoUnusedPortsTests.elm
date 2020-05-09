@@ -340,6 +340,18 @@ stop = alarm "stop"
 """
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
+        , test "does not crash when it encounters a recursive function call" <|
+            \_ ->
+                """
+port module Main exposing (main)
+main = update
+update = ping "play"
+ping cmd = pong (alarm cmd)
+pong cmd = ping (alarm cmd)
+port alarm : String -> msg
+"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
         ]
 
 
