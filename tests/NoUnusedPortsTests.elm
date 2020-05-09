@@ -288,6 +288,18 @@ a = 1"""
                     |> Review.Test.expectErrors
                         [ unusedPortError "alarm" |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
                         ]
+        , test "do not report when port is used but functions are defined out of sequence" <|
+            \_ ->
+                """
+port module Ports exposing (main)
+port alarm : String -> msg
+main = play
+load = alarm "load"
+play = alarm "play"
+stop = alarm "stop"
+"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
         ]
 
 

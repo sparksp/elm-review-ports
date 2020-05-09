@@ -91,6 +91,7 @@ moduleVisitor schema =
     schema
         |> Rule.withModuleDefinitionVisitor moduleDefinitionVisitor
         |> Rule.withImportVisitor importVisitor
+        |> Rule.withDeclarationListVisitor declarationListVisitor
         |> Rule.withDeclarationVisitor declarationVisitor
         |> Rule.withExpressionVisitor expressionVisitor
 
@@ -105,12 +106,14 @@ importVisitor node context =
     ( [], rememberImportedModule (Node.value node) context )
 
 
+declarationListVisitor : List (Node Declaration) -> ModuleContext -> ( List (Error {}), ModuleContext )
+declarationListVisitor declarations context =
+    ( [], List.foldl rememberDeclaration context declarations )
+
+
 declarationVisitor : Node Declaration -> Rule.Direction -> ModuleContext -> ( List (Error {}), ModuleContext )
 declarationVisitor node direction context =
     case ( direction, Node.value node ) of
-        ( Rule.OnEnter, Declaration.PortDeclaration { name } ) ->
-            ( [], rememberPort name context )
-
         ( Rule.OnEnter, Declaration.FunctionDeclaration { declaration } ) ->
             let
                 name : String
@@ -120,7 +123,7 @@ declarationVisitor node direction context =
             ( [], rememberCurrentFunction ( context.moduleName, name ) context )
 
         ( Rule.OnExit, Declaration.FunctionDeclaration _ ) ->
-            ( [], { context | currentFunction = Nothing } )
+            ( [], forgetCurrentFunction context )
 
         _ ->
             ( [], context )
@@ -381,6 +384,24 @@ rememberImportedFunction ( moduleName, name ) context =
     { context | importedFunctions = Dict.insert ( [], name ) ( moduleName, name ) context.importedFunctions }
 
 
+rememberDeclaration : Node Declaration -> ModuleContext -> ModuleContext
+rememberDeclaration node context =
+    case Node.value node of
+        Declaration.PortDeclaration { name } ->
+            rememberPort name context
+
+        Declaration.FunctionDeclaration { declaration } ->
+            let
+                name : String
+                name =
+                    declaration |> Node.value |> .name |> Node.value
+            in
+            rememberImportedFunction ( context.moduleName, name ) context
+
+        _ ->
+            context
+
+
 rememberPort : Node String -> ModuleContext -> ModuleContext
 rememberPort node context =
     let
@@ -394,7 +415,11 @@ rememberPort node context =
 rememberCurrentFunction : ( ModuleName, String ) -> ModuleContext -> ModuleContext
 rememberCurrentFunction function context =
     { context | currentFunction = Just function }
-        |> rememberImportedFunction function
+
+
+forgetCurrentFunction : ModuleContext -> ModuleContext
+forgetCurrentFunction context =
+    { context | currentFunction = Nothing }
 
 
 rememberFunctionCall : ( ModuleName, String ) -> ModuleContext -> ModuleContext
