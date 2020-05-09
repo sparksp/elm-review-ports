@@ -27,7 +27,7 @@ import Set exposing (Set)
         [ NoUnusedPorts.rule
         ]
 
-This rule reports any ports that are not used _anywhere in the project_. A port is only considered used if it can be traced to an exposed `main` function.
+This rule reports any ports that are not used _anywhere in the project_. A port is only considered used if it can be traced to a `main` function.
 
 
 ## Why is this a problem?
@@ -263,13 +263,9 @@ type alias SearchData =
 
 
 findUsedPorts : ModuleContext -> ( ProjectPorts, ProjectPorts )
-findUsedPorts { exposed, functionCalls, importedFunctions, moduleName, ports } =
+findUsedPorts { functionCalls, importedFunctions, moduleName, ports } =
     if Dict.get ( [], "main" ) importedFunctions /= Just ( moduleName, "main" ) then
         -- Debug.log "stop: no local main function" <|
-        ( Dict.empty, ports )
-
-    else if not <| isFunctionExposed exposed "main" then
-        -- Debug.log "stop: no main exposed" <|
         ( Dict.empty, ports )
 
     else
@@ -494,16 +490,6 @@ rememberFunctionCall function context =
             expandFunctionCall context function
     in
     { context | functionCalls = Dict.update functionCall (maybeSetInsert context.currentFunction) context.functionCalls }
-
-
-isFunctionExposed : Exposed -> String -> Bool
-isFunctionExposed exposed name =
-    case exposed of
-        ExposedAll ->
-            True
-
-        ExposedList list ->
-            Set.member name list
 
 
 expandFunctionCall : ModuleContext -> ( ModuleName, String ) -> ( ModuleName, String )
