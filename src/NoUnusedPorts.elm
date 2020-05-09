@@ -15,6 +15,7 @@ import Elm.Syntax.Module as Module exposing (Module)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
 import Elm.Syntax.Range exposing (Range)
+import Review.Fix as Fix
 import Review.Rule as Rule exposing (Error, Rule)
 import Set exposing (Set)
 
@@ -140,30 +141,33 @@ expressionVisitor node direction context =
 
 
 finalEvaluation : ProjectContext -> List (Error scope)
-finalEvaluation { ports } =
-    ports |> reportUnusedPorts
+finalEvaluation { functionCalls, ports } =
+    ports |> Dict.toList |> List.map (reportUnusedPort functionCalls)
 
 
 
 --- REPORT
 
 
-reportUnusedPorts : ProjectPorts -> List (Error scope)
-reportUnusedPorts ports =
-    ports |> Dict.toList |> List.map reportUnusedPort
+reportUnusedPort : FunctionCalls -> ( ( ModuleName, String ), Port ) -> Error scope
+reportUnusedPort functionCalls ( ( moduleName, portName ), Port { range, moduleKey, declaration } ) =
+    if Dict.member ( moduleName, portName ) functionCalls then
+        Rule.errorForModule moduleKey (report portName) range
 
-
-reportUnusedPort : ( ( ModuleName, String ), Port ) -> Error scope
-reportUnusedPort ( ( _, portName ), Port range moduleKey ) =
-    Rule.errorForModule moduleKey (report portName) range
+    else
+        Rule.errorForModuleWithFix moduleKey
+            (report portName)
+            range
+            [ Fix.removeRange (Node.range declaration) ]
 
 
 report : String -> { message : String, details : List String }
 report portName =
     { message = "Port `" ++ portName ++ "` is never used."
     , details =
-        [ "This port is never used. You may want to remove it to keep your project clean, and maybe detect some unused code in your project."
+        [ "You should either use this port somewhere, or remove it at the location I pointed at. This may highlight some other unused code in your project."
         , "Unused ports are not available in the compiled JavaScript and may cause runtime errors if you try to access them."
+        , "Warning: If you remove this port, remember to remove any calls to it in your JavaScript code too."
         ]
     }
 
@@ -173,7 +177,7 @@ report portName =
 
 
 type Port
-    = Port Range Rule.ModuleKey
+    = Port { range : Range, moduleKey : Rule.ModuleKey, declaration : Node Declaration }
 
 
 type Exposed
@@ -388,7 +392,7 @@ rememberDeclaration : Node Declaration -> ModuleContext -> ModuleContext
 rememberDeclaration node context =
     case Node.value node of
         Declaration.PortDeclaration { name } ->
-            rememberPort name context
+            rememberPort name node context
 
         Declaration.FunctionDeclaration { declaration } ->
             let
@@ -402,13 +406,13 @@ rememberDeclaration node context =
             context
 
 
-rememberPort : Node String -> ModuleContext -> ModuleContext
-rememberPort node context =
+rememberPort : Node String -> Node Declaration -> ModuleContext -> ModuleContext
+rememberPort node declaration context =
     let
         portName =
             ( context.moduleName, Node.value node )
     in
-    { context | ports = Dict.insert portName (Port (Node.range node) context.moduleKey) context.ports }
+    { context | ports = Dict.insert portName (Port { range = Node.range node, moduleKey = context.moduleKey, declaration = declaration }) context.ports }
         |> rememberImportedFunction portName
 
 

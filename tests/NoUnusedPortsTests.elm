@@ -19,9 +19,14 @@ main = "Hello"
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
-                          , [ unusedPortError "alarm" |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
-                            , unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                          , [ unusedPortError "alarm"
+                                |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
+                                |> Review.Test.whenFixed portsModuleWithoutAlarm
+                            , unusedPortError "action"
+                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.whenFixed portsModuleWithoutAction
                             , unusedPortError "unused"
+                                |> Review.Test.whenFixed portsModuleWithoutUnused
                             ]
                           )
                         ]
@@ -37,8 +42,11 @@ main = Ports.alarm "play"
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
-                          , [ unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                          , [ unusedPortError "action"
+                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.whenFixed portsModuleWithoutAction
                             , unusedPortError "unused"
+                                |> Review.Test.whenFixed portsModuleWithoutUnused
                             ]
                           )
                         ]
@@ -54,8 +62,11 @@ main = alarm "play"
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
-                          , [ unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                          , [ unusedPortError "action"
+                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.whenFixed portsModuleWithoutAction
                             , unusedPortError "unused"
+                                |> Review.Test.whenFixed portsModuleWithoutUnused
                             ]
                           )
                         ]
@@ -71,8 +82,11 @@ main = P.alarm "play"
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
-                          , [ unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                          , [ unusedPortError "action"
+                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.whenFixed portsModuleWithoutAction
                             , unusedPortError "unused"
+                                |> Review.Test.whenFixed portsModuleWithoutUnused
                             ]
                           )
                         ]
@@ -88,8 +102,11 @@ main = alarm "play"
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
-                          , [ unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                          , [ unusedPortError "action"
+                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.whenFixed portsModuleWithoutAction
                             , unusedPortError "unused"
+                                |> Review.Test.whenFixed portsModuleWithoutUnused
                             ]
                           )
                         ]
@@ -107,8 +124,11 @@ unused = Ports.alarm "play"
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
                           , [ unusedPortError "alarm" |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
-                            , unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                            , unusedPortError "action"
+                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.whenFixed portsModuleWithoutAction
                             , unusedPortError "unused"
+                                |> Review.Test.whenFixed portsModuleWithoutUnused
                             ]
                           )
                         ]
@@ -126,8 +146,11 @@ a = 1
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
                           , [ unusedPortError "alarm" |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
-                            , unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                            , unusedPortError "action"
+                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.whenFixed portsModuleWithoutAction
                             , unusedPortError "unused"
+                                |> Review.Test.whenFixed portsModuleWithoutUnused
                             ]
                           )
                         ]
@@ -143,8 +166,11 @@ main = Ports.alarm "play"
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
-                          , [ unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                          , [ unusedPortError "action"
+                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.whenFixed portsModuleWithoutAction
                             , unusedPortError "unused"
+                                |> Review.Test.whenFixed portsModuleWithoutUnused
                             ]
                           )
                         ]
@@ -168,8 +194,11 @@ main = 1
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
                           , [ unusedPortError "alarm" |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
-                            , unusedPortError "action" |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                            , unusedPortError "action"
+                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.whenFixed portsModuleWithoutAction
                             , unusedPortError "unused"
+                                |> Review.Test.whenFixed portsModuleWithoutUnused
                             ]
                           )
                         ]
@@ -224,6 +253,7 @@ main =
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
                           , [ unusedPortError "unused"
+                                |> Review.Test.whenFixed portsModuleWithoutUnused
                             ]
                           )
                         ]
@@ -242,6 +272,11 @@ a = 1"""
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
                         [ unusedPortError "alarm"
+                            |> Review.Test.whenFixed
+                                """
+port module Ports exposing (a)
+
+a = 1"""
                         ]
         , test "do not report outgoing ports that are used" <|
             \_ ->
@@ -264,6 +299,11 @@ a = 1"""
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
                         [ unusedPortError "action"
+                            |> Review.Test.whenFixed
+                                """
+port module Ports exposing (a)
+
+a = 1"""
                         ]
         , test "do not report incoming ports that are used" <|
             \_ ->
@@ -320,8 +360,9 @@ unusedPortError name =
     Review.Test.error
         { message = "Port `" ++ name ++ "` is never used."
         , details =
-            [ "This port is never used. You may want to remove it to keep your project clean, and maybe detect some unused code in your project."
+            [ "You should either use this port somewhere, or remove it at the location I pointed at. This may highlight some other unused code in your project."
             , "Unused ports are not available in the compiled JavaScript and may cause runtime errors if you try to access them."
+            , "Warning: If you remove this port, remember to remove any calls to it in your JavaScript code too."
             ]
         , under = name
         }
@@ -334,4 +375,34 @@ port module Ports exposing (alarm, action)
 port alarm : String -> Cmd msg
 port action : (String -> msg) -> Sub msg
 port unused : String -> Cmd msg
+"""
+
+
+portsModuleWithoutAlarm : String
+portsModuleWithoutAlarm =
+    """
+port module Ports exposing (alarm, action)
+
+port action : (String -> msg) -> Sub msg
+port unused : String -> Cmd msg
+"""
+
+
+portsModuleWithoutAction : String
+portsModuleWithoutAction =
+    """
+port module Ports exposing (alarm, action)
+port alarm : String -> Cmd msg
+
+port unused : String -> Cmd msg
+"""
+
+
+portsModuleWithoutUnused : String
+portsModuleWithoutUnused =
+    """
+port module Ports exposing (alarm, action)
+port alarm : String -> Cmd msg
+port action : (String -> msg) -> Sub msg
+
 """
