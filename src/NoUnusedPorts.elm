@@ -236,7 +236,7 @@ initialProjectContext =
 
 
 type alias ModuleContext =
-    { currentFunction : Maybe ( ModuleName, String )
+    { currentFunction : ( ModuleName, String )
     , functionCalls : FunctionCalls
     , importedAliases : Dict ModuleName ModuleName
     , importedFunctions : Dict String ModuleName
@@ -249,7 +249,7 @@ type alias ModuleContext =
 
 initialModuleContext : { functionCalls : FunctionCalls, moduleKey : Rule.ModuleKey, moduleName : ModuleName, ports : ProjectPorts } -> ModuleContext
 initialModuleContext { functionCalls, moduleKey, moduleName, ports } =
-    { currentFunction = Nothing
+    { currentFunction = ( [], "" )
     , functionCalls = functionCalls
     , importedAliases = Dict.empty
     , importedFunctions = Dict.empty
@@ -467,7 +467,7 @@ rememberPort node declaration context =
 
 rememberCurrentFunction : ( ModuleName, String ) -> ModuleContext -> ModuleContext
 rememberCurrentFunction function context =
-    { context | currentFunction = Just function }
+    { context | currentFunction = function }
 
 
 rememberFunctionCall : ( ModuleName, String ) -> ModuleContext -> ModuleContext
@@ -511,14 +511,11 @@ filterByFirst first tuples =
     tuples |> List.filter (\( value, _ ) -> value == first)
 
 
-maybeSetInsert : Maybe comparable -> Maybe (Set comparable) -> Maybe (Set comparable)
-maybeSetInsert maybeItem maybeSet =
-    case ( maybeItem, maybeSet ) of
-        ( Nothing, _ ) ->
-            maybeSet
-
-        ( Just item, Nothing ) ->
+maybeSetInsert : comparable -> Maybe (Set comparable) -> Maybe (Set comparable)
+maybeSetInsert item maybeSet =
+    case maybeSet of
+        Nothing ->
             Just (Set.singleton item)
 
-        ( Just item, Just set ) ->
+        Just set ->
             Just (Set.insert item set)
