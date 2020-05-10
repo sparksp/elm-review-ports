@@ -238,8 +238,19 @@ subscriptions model =
     Ports.action GotAction
 """
                 , """
+module Utils exposing (add)
+
+import Html
+
+
+add : Int -> Int -> Int
+add a b =
+    a + b
+"""
+                , """
 module Main exposing (main)
 
+import Utils
 import Worker
 
 

@@ -11,6 +11,7 @@ import Elm.Syntax.Declaration as Declaration exposing (Declaration)
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
 import Elm.Syntax.Expression as Expression exposing (Expression)
 import Elm.Syntax.Import exposing (Import)
+import Elm.Syntax.Module as Module exposing (Module)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
 import Elm.Syntax.Range exposing (Range)
@@ -89,10 +90,51 @@ rule =
 moduleVisitor : Rule.ModuleRuleSchema {} ModuleContext -> Rule.ModuleRuleSchema { hasAtLeastOneVisitor : () } ModuleContext
 moduleVisitor schema =
     schema
-        |> Rule.withImportVisitor importVisitor
-        |> Rule.withDeclarationListVisitor declarationListVisitor
-        |> Rule.withDeclarationVisitor declarationVisitor
-        |> Rule.withExpressionVisitor expressionVisitor
+        |> Rule.withModuleDefinitionVisitor moduleDefinitionVisitor
+        |> Rule.withImportVisitor (guardedDeclarationVisitor importVisitor)
+        |> Rule.withDeclarationListVisitor (guardedDeclarationVisitor declarationListVisitor)
+        |> Rule.withDeclarationVisitor (guardedExpressionVisitor declarationVisitor)
+        |> Rule.withExpressionVisitor (guardedExpressionVisitor expressionVisitor)
+
+
+{-| Only visit imports and declaration lists if are a port module or know about any ports.
+
+  - We may be passed ports from an import, or
+  - We may declare our own ports.
+
+-}
+guardedDeclarationVisitor : (a -> ModuleContext -> ( List (Error {}), ModuleContext )) -> a -> ModuleContext -> ( List (Error {}), ModuleContext )
+guardedDeclarationVisitor visitor a context =
+    if not context.isPortModule && Dict.isEmpty context.ports then
+        ( [], context )
+
+    else
+        visitor a context
+
+
+{-| Only visit declarations and expressions if we know about any ports.
+
+  - We may be passed ports from an import, or
+  - We may have declared our own ports.
+
+-}
+guardedExpressionVisitor : (a -> b -> ModuleContext -> ( List (Error {}), ModuleContext )) -> a -> b -> ModuleContext -> ( List (Error {}), ModuleContext )
+guardedExpressionVisitor visitor a b context =
+    if Dict.isEmpty context.ports then
+        ( [], context )
+
+    else
+        visitor a b context
+
+
+moduleDefinitionVisitor : Node Module -> ModuleContext -> ( List (Error {}), ModuleContext )
+moduleDefinitionVisitor node context =
+    case Node.value node of
+        Module.PortModule _ ->
+            ( [], { context | isPortModule = True } )
+
+        _ ->
+            ( [], { context | isPortModule = False } )
 
 
 importVisitor : Node Import -> ModuleContext -> ( List (Error {}), ModuleContext )
@@ -198,6 +240,7 @@ type alias ModuleContext =
     , functionCalls : FunctionCalls
     , importedAliases : Dict ModuleName ModuleName
     , importedFunctions : Dict String ModuleName
+    , isPortModule : Bool
     , moduleKey : Rule.ModuleKey
     , moduleName : ModuleName
     , ports : ProjectPorts
@@ -210,6 +253,7 @@ initialModuleContext { functionCalls, moduleKey, moduleName, ports } =
     , functionCalls = functionCalls
     , importedAliases = Dict.empty
     , importedFunctions = Dict.empty
+    , isPortModule = False
     , moduleKey = moduleKey
     , moduleName = moduleName
     , ports = ports
