@@ -32,7 +32,7 @@ This rule reports any ports that are not used _anywhere in the project_. A port 
 
 ## Why is this a problem?
 
-Elm is very good at elimiating dead code from the compiled JavaScript. When a port is unused it will not be present in the compiled JavaScript, and when no ports are used the `app.ports` object will be `undefined`. This may lead to JavaScript runtime errors that could take you some time to figure out.
+Elm is very good at eliminating dead code from the compiled JavaScript. When a port is unused it will not be present in the compiled JavaScript, and when no ports are used the `app.ports` object will be `undefined`. This may lead to JavaScript runtime errors that could take you some time to figure out.
 
 ```javascript
 var app = Elm.Main.init({
