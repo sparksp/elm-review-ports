@@ -15,7 +15,6 @@ import Elm.Syntax.Module as Module exposing (Module)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
 import Elm.Syntax.Range exposing (Range)
-import Review.Fix as Fix
 import Review.Rule as Rule exposing (Error, Rule)
 import Set exposing (Set)
 
@@ -173,24 +172,17 @@ expressionVisitor node direction context =
 
 
 finalEvaluation : ProjectContext -> List (Error scope)
-finalEvaluation { functionCalls, ports } =
-    ports |> Dict.toList |> List.map (reportUnusedPort functionCalls)
+finalEvaluation { ports } =
+    ports |> Dict.toList |> List.map reportUnusedPort
 
 
 
 --- REPORT
 
 
-reportUnusedPort : FunctionCalls -> ( ( ModuleName, String ), Port ) -> Error scope
-reportUnusedPort functionCalls ( ( moduleName, portName ), Port { range, moduleKey, declaration } ) =
-    if Dict.member ( moduleName, portName ) functionCalls then
-        Rule.errorForModule moduleKey (report portName) range
-
-    else
-        Rule.errorForModuleWithFix moduleKey
-            (report portName)
-            range
-            [ Fix.removeRange (Node.range declaration) ]
+reportUnusedPort : ( ( ModuleName, String ), Port ) -> Error scope
+reportUnusedPort ( ( _, portName ), Port { range, moduleKey } ) =
+    Rule.errorForModule moduleKey (report portName) range
 
 
 report : String -> { message : String, details : List String }
@@ -209,7 +201,7 @@ report portName =
 
 
 type Port
-    = Port { range : Range, moduleKey : Rule.ModuleKey, declaration : Node Declaration }
+    = Port { range : Range, moduleKey : Rule.ModuleKey }
 
 
 type alias ProjectContext =
@@ -452,21 +444,21 @@ rememberDeclaration : Node Declaration -> ModuleContext -> ModuleContext
 rememberDeclaration node context =
     case Node.value node of
         Declaration.PortDeclaration { name } ->
-            rememberPort name node context
+            rememberPort name context
 
         _ ->
             context
 
 
-rememberPort : Node String -> Node Declaration -> ModuleContext -> ModuleContext
-rememberPort node declaration context =
+rememberPort : Node String -> ModuleContext -> ModuleContext
+rememberPort node context =
     let
         portName =
             ( context.moduleName, Node.value node )
     in
     { context
         | hasPorts = True
-        , ports = Dict.insert portName (Port { range = Node.range node, moduleKey = context.moduleKey, declaration = declaration }) context.ports
+        , ports = Dict.insert portName (Port { range = Node.range node, moduleKey = context.moduleKey }) context.ports
     }
 
 
