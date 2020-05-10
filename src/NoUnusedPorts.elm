@@ -11,7 +11,6 @@ import Elm.Syntax.Declaration as Declaration exposing (Declaration)
 import Elm.Syntax.Exposing as Exposing exposing (Exposing)
 import Elm.Syntax.Expression as Expression exposing (Expression)
 import Elm.Syntax.Import exposing (Import)
-import Elm.Syntax.Module as Module exposing (Module)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
 import Elm.Syntax.Range exposing (Range)
@@ -90,16 +89,10 @@ rule =
 moduleVisitor : Rule.ModuleRuleSchema {} ModuleContext -> Rule.ModuleRuleSchema { hasAtLeastOneVisitor : () } ModuleContext
 moduleVisitor schema =
     schema
-        |> Rule.withModuleDefinitionVisitor moduleDefinitionVisitor
         |> Rule.withImportVisitor importVisitor
         |> Rule.withDeclarationListVisitor declarationListVisitor
         |> Rule.withDeclarationVisitor declarationVisitor
         |> Rule.withExpressionVisitor expressionVisitor
-
-
-moduleDefinitionVisitor : Node Module -> ModuleContext -> ( List (Error {}), ModuleContext )
-moduleDefinitionVisitor node context =
-    ( [], rememberExposing (node |> Node.value |> Module.exposingList) context )
 
 
 importVisitor : Node Import -> ModuleContext -> ( List (Error {}), ModuleContext )
@@ -177,11 +170,6 @@ type Port
     = Port { range : Range, moduleKey : Rule.ModuleKey, declaration : Node Declaration }
 
 
-type Exposed
-    = ExposedAll
-    | ExposedList (Set String)
-
-
 type alias ProjectContext =
     { functionCalls : FunctionCalls
     , ports : ProjectPorts
@@ -207,7 +195,6 @@ initialProjectContext =
 
 type alias ModuleContext =
     { currentFunction : Maybe ( ModuleName, String )
-    , exposed : Exposed
     , functionCalls : FunctionCalls
     , importedAliases : Dict ModuleName ModuleName
     , importedFunctions : Dict String ModuleName
@@ -220,7 +207,6 @@ type alias ModuleContext =
 initialModuleContext : { functionCalls : FunctionCalls, moduleKey : Rule.ModuleKey, moduleName : ModuleName, ports : ProjectPorts } -> ModuleContext
 initialModuleContext { functionCalls, moduleKey, moduleName, ports } =
     { currentFunction = Nothing
-    , exposed = ExposedList Set.empty
     , functionCalls = functionCalls
     , importedAliases = Dict.empty
     , importedFunctions = Dict.empty
@@ -353,46 +339,6 @@ mergePorts a b =
 removePorts : ProjectPorts -> ProjectPorts -> ProjectPorts
 removePorts remove ports =
     Dict.diff ports remove
-
-
-rememberExposing : Exposing -> ModuleContext -> ModuleContext
-rememberExposing exposing_ context =
-    case exposing_ of
-        Exposing.Explicit nodes ->
-            rememberExposedList nodes context
-
-        Exposing.All _ ->
-            rememberExposingAll context
-
-
-rememberExposingAll : ModuleContext -> ModuleContext
-rememberExposingAll context =
-    { context | exposed = ExposedAll }
-
-
-rememberExposedList : List (Node Exposing.TopLevelExpose) -> ModuleContext -> ModuleContext
-rememberExposedList nodes context =
-    List.foldl rememberExposedItem context nodes
-
-
-rememberExposedItem : Node Exposing.TopLevelExpose -> ModuleContext -> ModuleContext
-rememberExposedItem node context =
-    case Node.value node of
-        Exposing.FunctionExpose name ->
-            rememberExposedFunction name context
-
-        _ ->
-            context
-
-
-rememberExposedFunction : String -> ModuleContext -> ModuleContext
-rememberExposedFunction name context =
-    case context.exposed of
-        ExposedAll ->
-            context
-
-        ExposedList list ->
-            { context | exposed = ExposedList (Set.insert name list) }
 
 
 rememberImportedModule : Import -> ModuleContext -> ModuleContext
