@@ -210,7 +210,7 @@ type alias ModuleContext =
     , exposed : Exposed
     , functionCalls : FunctionCalls
     , importedAliases : Dict ModuleName ModuleName
-    , importedFunctions : Dict ( ModuleName, String ) ( ModuleName, String )
+    , importedFunctions : Dict String ModuleName
     , moduleKey : Rule.ModuleKey
     , moduleName : ModuleName
     , ports : ProjectPorts
@@ -453,7 +453,7 @@ rememberImportedFunctionList functions context =
 
 rememberImportedFunction : ( ModuleName, String ) -> ModuleContext -> ModuleContext
 rememberImportedFunction ( moduleName, name ) context =
-    { context | importedFunctions = Dict.insert ( [], name ) ( moduleName, name ) context.importedFunctions }
+    { context | importedFunctions = Dict.insert name moduleName context.importedFunctions }
 
 
 rememberDeclaration : Node Declaration -> ModuleContext -> ModuleContext
@@ -461,14 +461,6 @@ rememberDeclaration node context =
     case Node.value node of
         Declaration.PortDeclaration { name } ->
             rememberPort name node context
-
-        Declaration.FunctionDeclaration { declaration } ->
-            let
-                name : String
-                name =
-                    declaration |> Node.value |> .name |> Node.value
-            in
-            rememberImportedFunction ( context.moduleName, name ) context
 
         _ ->
             context
@@ -481,7 +473,6 @@ rememberPort node declaration context =
             ( context.moduleName, Node.value node )
     in
     { context | ports = Dict.insert portName (Port { range = Node.range node, moduleKey = context.moduleKey, declaration = declaration }) context.ports }
-        |> rememberImportedFunction portName
 
 
 rememberCurrentFunction : ( ModuleName, String ) -> ModuleContext -> ModuleContext
@@ -499,18 +490,30 @@ rememberFunctionCall function context =
 
 
 expandFunctionCall : ModuleContext -> ( ModuleName, String ) -> ( ModuleName, String )
-expandFunctionCall { importedFunctions, importedAliases } ( moduleName, function ) =
-    Dict.get ( moduleName, function ) importedFunctions
-        |> Maybe.withDefault ( moduleName, function )
-        |> expandModuleName importedAliases
+expandFunctionCall { importedAliases, importedFunctions, moduleName } ( moduleCall, functionCall ) =
+    let
+        expandedModule : ModuleName
+        expandedModule =
+            case moduleCall of
+                [] ->
+                    lookupFunctionModule importedFunctions moduleName functionCall
+
+                _ ->
+                    lookupModuleAlias importedAliases moduleCall
+    in
+    ( expandedModule, functionCall )
 
 
-expandModuleName : Dict ModuleName ModuleName -> ( ModuleName, String ) -> ( ModuleName, String )
-expandModuleName importedAliases ( moduleName, function ) =
-    ( Dict.get moduleName importedAliases
+lookupFunctionModule : Dict String ModuleName -> ModuleName -> String -> ModuleName
+lookupFunctionModule importedFunctions defaultModuleName function =
+    Dict.get function importedFunctions
+        |> Maybe.withDefault defaultModuleName
+
+
+lookupModuleAlias : Dict ModuleName ModuleName -> ModuleName -> ModuleName
+lookupModuleAlias importedAliases moduleName =
+    Dict.get moduleName importedAliases
         |> Maybe.withDefault moduleName
-    , function
-    )
 
 
 filterByFirst : a -> List ( a, b ) -> List ( a, b )
