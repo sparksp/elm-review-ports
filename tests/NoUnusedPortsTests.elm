@@ -112,7 +112,7 @@ unused = Ports.alarm "play"
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
-                          , [ unusedPortError "alarm" |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
+                          , [ unusedPortWithCallersError "alarm" [ "Main.unused" ] |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
                             , unusedPortError "action"
                                 |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
                             , unusedPortError "unused"
@@ -309,7 +309,8 @@ stop = alarm "stop"
 a = 1"""
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
-                        [ unusedPortError "alarm" |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
+                        [ unusedPortWithCallersError "alarm" [ "Ports.load", "Ports.play", "Ports.stop" ]
+                            |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
                         ]
         , test "do not report when port is used but functions are defined out of sequence" <|
             \_ ->
@@ -353,14 +354,39 @@ all =
 unusedPortError : String -> Review.Test.ExpectedError
 unusedPortError name =
     Review.Test.error
-        { message = "Port `" ++ name ++ "` is never used (Warning: can cause JS runtime errors)"
-        , details =
-            [ "Unused ports are not available in the compiled JavaScript and can cause runtime errors when you try to access them."
-            , "You should either use this port somewhere, or remove it at the location I pointed at. This may highlight some other unused code in your project too."
-            , "Warning: If you remove this port, remember to remove any calls to it in your JavaScript code too."
-            ]
+        { message = errorMessage name
+        , details = errorDetails
         , under = name
         }
+
+
+unusedPortWithCallersError : String -> List String -> Review.Test.ExpectedError
+unusedPortWithCallersError name callers =
+    Review.Test.error
+        { message = errorMessage name
+        , details = errorDetails ++ withCallers callers
+        , under = name
+        }
+
+
+errorMessage : String -> String
+errorMessage name =
+    "Port `" ++ name ++ "` is never used (Warning: can cause JS runtime errors)"
+
+
+errorDetails : List String
+errorDetails =
+    [ "Unused ports are not available in the compiled JavaScript and can cause runtime errors when you try to access them."
+    , "You should either use this port somewhere, or remove it at the location I pointed at. This may highlight some other unused code in your project too."
+    , "Warning: If you remove this port, remember to remove any calls to it in your JavaScript code too."
+    ]
+
+
+withCallers : List String -> List String
+withCallers callers =
+    [ "I found this port called by the following functions, but none of them trace back to a `main` function:"
+    , String.join "\n" <| List.map (\caller -> " * " ++ caller) callers
+    ]
 
 
 portsModule : String

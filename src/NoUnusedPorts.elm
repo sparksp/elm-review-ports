@@ -172,28 +172,50 @@ expressionVisitor node direction context =
 
 
 finalEvaluation : ProjectContext -> List (Error scope)
-finalEvaluation { ports } =
-    ports |> Dict.toList |> List.map reportUnusedPort
+finalEvaluation { functionCalls, ports } =
+    ports |> Dict.toList |> List.map (reportUnusedPort functionCalls)
 
 
 
 --- REPORT
 
 
-reportUnusedPort : ( ( ModuleName, String ), Port ) -> Error scope
-reportUnusedPort ( ( _, portName ), Port { range, moduleKey } ) =
-    Rule.errorForModule moduleKey (report portName) range
+reportUnusedPort : FunctionCalls -> ( ( ModuleName, String ), Port ) -> Error scope
+reportUnusedPort functionCalls ( ( moduleName, portName ), Port { range, moduleKey } ) =
+    let
+        callers : Maybe (Set ( ModuleName, String ))
+        callers =
+            Dict.get ( moduleName, portName ) functionCalls
+    in
+    Rule.errorForModule moduleKey (report portName callers) range
 
 
-report : String -> { message : String, details : List String }
-report portName =
+report : String -> Maybe (Set ( ModuleName, String )) -> { message : String, details : List String }
+report portName callers =
     { message = "Port `" ++ portName ++ "` is never used (Warning: can cause JS runtime errors)"
     , details =
-        [ "Unused ports are not available in the compiled JavaScript and can cause runtime errors when you try to access them."
-        , "You should either use this port somewhere, or remove it at the location I pointed at. This may highlight some other unused code in your project too."
-        , "Warning: If you remove this port, remember to remove any calls to it in your JavaScript code too."
-        ]
+        "Unused ports are not available in the compiled JavaScript and can cause runtime errors when you try to access them."
+            :: "You should either use this port somewhere, or remove it at the location I pointed at. This may highlight some other unused code in your project too."
+            :: "Warning: If you remove this port, remember to remove any calls to it in your JavaScript code too."
+            :: callerDetails callers
     }
+
+
+callerDetails : Maybe (Set ( ModuleName, String )) -> List String
+callerDetails maybeCallers =
+    case maybeCallers of
+        Nothing ->
+            []
+
+        Just callers ->
+            [ "I found this port called by the following functions, but none of them trace back to a `main` function:"
+            , callers |> Set.toList |> List.map formatCaller |> String.join "\n"
+            ]
+
+
+formatCaller : ( ModuleName, String ) -> String
+formatCaller ( moduleName, caller ) =
+    " * " ++ String.join "." moduleName ++ "." ++ caller
 
 
 
