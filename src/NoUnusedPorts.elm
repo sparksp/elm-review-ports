@@ -215,7 +215,7 @@ callerDetails maybeCallers =
 
 formatCaller : ( ModuleName, String ) -> String
 formatCaller ( moduleName, caller ) =
-    " * " ++ String.join "." moduleName ++ "." ++ caller
+    "-> " ++ String.join "." moduleName ++ "." ++ caller
 
 
 

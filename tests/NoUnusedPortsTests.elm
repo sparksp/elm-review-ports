@@ -385,7 +385,7 @@ errorDetails =
 withCallers : List String -> List String
 withCallers callers =
     [ "I found this port called by the following functions, but none of them trace back to a `main` function:"
-    , String.join "\n" <| List.map (\caller -> " * " ++ caller) callers
+    , String.join "\n" <| List.map (\caller -> "-> " ++ caller) callers
     ]
 
 
