@@ -398,7 +398,7 @@ rememberImportedAlias moduleName maybeModuleAlias context =
         Just moduleAlias ->
             { context | importedAliases = Dict.insert moduleAlias moduleName context.importedAliases }
 
-        _ ->
+        Nothing ->
             context
 
 
@@ -411,7 +411,7 @@ rememberImportedList moduleName exposingList context =
         Just (Exposing.All _) ->
             rememberImportedAll moduleName context
 
-        _ ->
+        Nothing ->
             context
 
 
