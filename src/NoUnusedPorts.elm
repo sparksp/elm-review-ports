@@ -105,11 +105,11 @@ moduleVisitor schema =
 -}
 guardedDeclarationVisitor : (a -> ModuleContext -> ( List (Error {}), ModuleContext )) -> a -> ModuleContext -> ( List (Error {}), ModuleContext )
 guardedDeclarationVisitor visitor a context =
-    if not context.isPortModule && Dict.isEmpty context.ports then
-        ( [], context )
+    if context.isPortModule || context.hasPorts then
+        visitor a context
 
     else
-        visitor a context
+        ( [], context )
 
 
 {-| Only visit declarations and expressions if we know about any ports.
@@ -120,11 +120,11 @@ guardedDeclarationVisitor visitor a context =
 -}
 guardedExpressionVisitor : (a -> b -> ModuleContext -> ( List (Error {}), ModuleContext )) -> a -> b -> ModuleContext -> ( List (Error {}), ModuleContext )
 guardedExpressionVisitor visitor a b context =
-    if Dict.isEmpty context.ports then
-        ( [], context )
+    if context.hasPorts then
+        visitor a b context
 
     else
-        visitor a b context
+        ( [], context )
 
 
 moduleDefinitionVisitor : Node Module -> ModuleContext -> ( List (Error {}), ModuleContext )
@@ -238,6 +238,7 @@ initialProjectContext =
 type alias ModuleContext =
     { currentFunction : ( ModuleName, String )
     , functionCalls : FunctionCalls
+    , hasPorts : Bool
     , importedAliases : Dict ModuleName ModuleName
     , importedFunctions : Dict String ModuleName
     , isPortModule : Bool
@@ -251,6 +252,7 @@ initialModuleContext : { functionCalls : FunctionCalls, moduleKey : Rule.ModuleK
 initialModuleContext { functionCalls, moduleKey, moduleName, ports } =
     { currentFunction = ( [], "" )
     , functionCalls = functionCalls
+    , hasPorts = not (Dict.isEmpty ports)
     , importedAliases = Dict.empty
     , importedFunctions = Dict.empty
     , isPortModule = False
@@ -462,7 +464,10 @@ rememberPort node declaration context =
         portName =
             ( context.moduleName, Node.value node )
     in
-    { context | ports = Dict.insert portName (Port { range = Node.range node, moduleKey = context.moduleKey, declaration = declaration }) context.ports }
+    { context
+        | hasPorts = True
+        , ports = Dict.insert portName (Port { range = Node.range node, moduleKey = context.moduleKey, declaration = declaration }) context.ports
+    }
 
 
 rememberCurrentFunction : ( ModuleName, String ) -> ModuleContext -> ModuleContext
