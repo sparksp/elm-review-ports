@@ -6,50 +6,58 @@ import Review.Test
 import Test exposing (Test, describe, fuzz, test)
 
 
+all : Test
+all =
+    describe "NoUnsafePorts"
+        [ incomingPortTests
+        , outgoingPortTests
+        ]
+
+
 incomingPortTests : Test
 incomingPortTests =
     describe "incoming ports"
         [ fuzz fuzzUnsafeType "unsafe type" <|
             \unsafeType ->
-                portModule unsafeType
+                incomingPortModule unsafeType
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
-                        [ unsafePortError { name = "action", type_ = unsafeType, under = unsafeType }
+                        [ unsafeIncomingPortError { name = "action", type_ = quote unsafeType, under = unsafeType }
                         ]
         , fuzz fuzzMaybeType "maybe type" <|
             \maybeType ->
-                portModule maybeType
+                incomingPortModule maybeType
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
-                        [ unsafePortError { name = "action", type_ = "Maybe", under = maybeType }
+                        [ unsafeIncomingPortError { name = "action", type_ = quote "Maybe", under = maybeType }
                         ]
         , fuzz fuzzListType "list type" <|
             \listType ->
-                portModule listType
+                incomingPortModule listType
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
-                        [ unsafePortError { name = "action", type_ = "List", under = listType }
+                        [ unsafeIncomingPortError { name = "action", type_ = quote "List", under = listType }
                         ]
         , fuzz fuzzArrayType "array type" <|
             \arrayType ->
-                portModule arrayType
+                incomingPortModule arrayType
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
-                        [ unsafePortError { name = "action", type_ = "Array", under = arrayType }
+                        [ unsafeIncomingPortError { name = "action", type_ = quote "Array", under = arrayType }
                         ]
         , test "record type" <|
             \_ ->
-                portModule "{ message : String }"
+                incomingPortModule "{ message : String }"
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
-                        [ unsafePortError { name = "action", type_ = "record", under = "{ message : String }" }
+                        [ unsafeIncomingPortError { name = "action", type_ = "record", under = "{ message : String }" }
                         ]
         , test "tuple type" <|
             \_ ->
-                portModule "( String, Int )"
+                incomingPortModule "( String, Int )"
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
-                        [ unsafePortError { name = "action", type_ = "tuple", under = "( String, Int )" }
+                        [ unsafeIncomingPortError { name = "action", type_ = "tuple", under = "( String, Int )" }
                         ]
         , test "Json.Decode.Value type" <|
             \_ ->
@@ -69,11 +77,66 @@ port action : (Json.Encode.Value -> msg) -> Sub msg
 main = 1"""
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
-        , Test.todo "exposed Json.Decode.Value type"
-        , Test.todo "exposed Json.Encode.Value type"
-        , Test.todo "aliased Json.Decode.Value type"
-        , Test.todo "aliased Json.Encode.Value type"
+        , test "import Json.Decode exposing (Value) type" <|
+            \_ ->
+                """
+module Main exposing (main)
+import Json.Decode exposing (Value)
+port action : (Value -> msg) -> Sub msg
+main = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
+        , test "import Json.Encode exposing (Value) type" <|
+            \_ ->
+                """
+module Main exposing (main)
+import Json.Encode exposing (Value)
+port action : (Value -> msg) -> Sub msg
+main = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
+        , test "import Json.Decode exposing (..) Value type" <|
+            \_ ->
+                """
+module Main exposing (main)
+import Json.Decode exposing (..)
+port action : (Value -> msg) -> Sub msg
+main = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
+        , test "import Json.Encode exposing (..) Value type" <|
+            \_ ->
+                """
+module Main exposing (main)
+import Json.Encode exposing (..)
+port action : (Value -> msg) -> Sub msg
+main = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
+        , test "aliased Json.Decode.Value type" <|
+            \_ ->
+                """
+module Main exposing (main)
+import Json.Decode as D
+port action : (D.Value -> msg) -> Sub msg
+main = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
+        , test "aliased Json.Encode.Value type" <|
+            \_ ->
+                """
+module Main exposing (main)
+import Json.Encode as E
+port action : (E.Value -> msg) -> Sub msg
+main = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
         ]
+
+
+outgoingPortTests : Test
+outgoingPortTests =
+    Test.todo "outgoing ports"
 
 
 fuzzUnsafeType : Fuzzer String
@@ -116,21 +179,8 @@ fuzzArrayType =
         ]
 
 
-outgoingPortTests : Test
-outgoingPortTests =
-    Test.todo "outgoing ports"
-
-
-all : Test
-all =
-    describe "NoUnsafePorts"
-        [ incomingPortTests
-        , outgoingPortTests
-        ]
-
-
-unsafePortError : { name : String, type_ : String, under : String } -> Review.Test.ExpectedError
-unsafePortError { name, type_, under } =
+unsafeIncomingPortError : { name : String, type_ : String, under : String } -> Review.Test.ExpectedError
+unsafeIncomingPortError { name, type_, under } =
     Review.Test.error
         { message = "Port `" ++ name ++ "` expects unsafe " ++ type_ ++ " data."
         , details =
@@ -141,10 +191,15 @@ unsafePortError { name, type_, under } =
         }
 
 
-portModule : String -> String
-portModule portType =
+incomingPortModule : String -> String
+incomingPortModule portType =
     String.join "\n"
         [ "module Main exposing (main)"
         , "port action : (" ++ portType ++ " -> msg) -> Sub msg"
         , "main = 1"
         ]
+
+
+quote : String -> String
+quote code =
+    "`" ++ code ++ "`"
