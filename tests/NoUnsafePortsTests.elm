@@ -329,16 +329,23 @@ unsafeIncomingPortError { name, type_, under } =
     Review.Test.error
         { message = "Port `" ++ name ++ "` expects unsafe " ++ type_ ++ " data."
         , details =
-            [ "When a port expecting an unsafe type receives data of another type it will cause a runtime error."
-            , "You should change this port to use `Json.Decode.Value` and use a `Decoder` result to handle any mismatched type errors."
+            [ "When a port expecting a basic type receives data of another type it will cause a runtime error."
+            , "You should change this port to use `Json.Encode.Value` and write a `Decoder` handle the data."
             ]
         , under = under
         }
 
 
 unsafeOutgoingPortError : { name : String, type_ : String, under : String } -> Review.Test.ExpectedError
-unsafeOutgoingPortError =
-    unsafeIncomingPortError
+unsafeOutgoingPortError { name, type_, under } =
+    Review.Test.error
+        { message = "Port `" ++ name ++ "` sends unsafe " ++ type_ ++ " data."
+        , details =
+            [ "When a port expecting an unsafe type receives data of another type it will cause a runtime error."
+            , "You should change this port to use `Json.Encode.Value` and use an `Encoder` to generate a safe value."
+            ]
+        , under = under
+        }
 
 
 incomingPortModule : String -> String

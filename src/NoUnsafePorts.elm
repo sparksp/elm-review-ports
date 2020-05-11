@@ -154,7 +154,7 @@ checkIncomingPort : ModuleContext -> String -> Node TypeAnnotation -> List (Erro
 checkIncomingPort context name portArguments =
     case Node.value portArguments of
         TypeAnnotation.FunctionTypeAnnotation subMessageType _ ->
-            checkPortArguments context (unsafePortError name) subMessageType
+            checkPortArguments context (unsafeIncomingPortError name) subMessageType
 
         _ ->
             -- There is something off about this port declaration. The compiler will complain about this
@@ -163,7 +163,7 @@ checkIncomingPort context name portArguments =
 
 checkOutgoingPort : ModuleContext -> String -> Node TypeAnnotation -> List (Error {})
 checkOutgoingPort context name portArguments =
-    checkPortArguments context (unsafePortError name) portArguments
+    checkPortArguments context (unsafeOutgoingPortError name) portArguments
 
 
 checkPortArguments : ModuleContext -> (Node String -> Error {}) -> Node TypeAnnotation -> List (Error {})
@@ -351,13 +351,25 @@ lookupModuleAlias aliases moduleName =
         |> Maybe.withDefault moduleName
 
 
-unsafePortError : String -> Node String -> Error {}
-unsafePortError name portType =
+unsafeIncomingPortError : String -> Node String -> Error {}
+unsafeIncomingPortError name portType =
     Rule.error
         { message = "Port `" ++ name ++ "` expects unsafe " ++ Node.value portType ++ " data."
         , details =
+            [ "When a port expecting a basic type receives data of another type it will cause a runtime error."
+            , "You should change this port to use `Json.Encode.Value` and write a `Decoder` handle the data."
+            ]
+        }
+        (Node.range portType)
+
+
+unsafeOutgoingPortError : String -> Node String -> Error {}
+unsafeOutgoingPortError name portType =
+    Rule.error
+        { message = "Port `" ++ name ++ "` sends unsafe " ++ Node.value portType ++ " data."
+        , details =
             [ "When a port expecting an unsafe type receives data of another type it will cause a runtime error."
-            , "You should change this port to use `Json.Decode.Value` and use a `Decoder` result to handle any mismatched type errors."
+            , "You should change this port to use `Json.Encode.Value` and use an `Encoder` to generate a safe value."
             ]
         }
         (Node.range portType)
