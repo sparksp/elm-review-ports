@@ -38,9 +38,10 @@ This rule reports any ports that do not send/receive a [`Json.Encode.Value`][Jso
 
 ## Why is this a problem?
 
-If a port expecting an `Int` receives a `Float` it will cause a runtime error. We can prevent this by just wrapping the incoming data as `Json.Encode.Value` and handling the data through a [`Decoder`][Json.Decode] instead. This guarantees that your application provides some sort of error handling.
+If a port expecting an `Int` receives a `Float` it will cause a runtime error. We can prevent this by just wrapping the incoming data as `Json.Encode.Value` and handling the data through a [`Decoder`][Json.Decode] instead. This guarantees that your application provides some sort of error handling. This is discussed in the Elm guide under [Verifying Flags].
 
 [Json.Decode]: https://package.elm-lang.org/packages/elm/json/latest/Json-Decode
+[Verifying Flags]: https://guide.elm-lang.org/interop/flags.html#verifying-flags
 
 
 ## Success
