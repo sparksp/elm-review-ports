@@ -1,8 +1,16 @@
-module NoUnsafePorts exposing (rule)
+module NoUnsafePorts exposing
+    ( rule
+    , any, onlyIncomingPorts
+    )
 
 {-|
 
 @docs rule
+
+
+## Config
+
+@docs any, onlyIncomingPorts
 
 -}
 
@@ -20,7 +28,7 @@ import Review.Rule as Rule exposing (Error, Rule)
 
     config : List Rule
     config =
-        [ NoUnsafePorts.rule
+        [ NoUnsafePorts.rule NoUnsafePorts.any
         ]
 
 This rule reports any ports that do not send/receive a [`Json.Encode.Value`][Json.Encode.Value].
@@ -56,12 +64,46 @@ If a port expecting an `Int` receives a `Float` it will cause a runtime error. W
   - The rule looks for the types `Cmd`, `Sub` and `Value` only - do not alias these types.
 
 -}
-rule : Rule
-rule =
-    Rule.newModuleRuleSchema "NoUnsafePorts" initialModuleContext
+rule : Check -> Rule
+rule check =
+    Rule.newModuleRuleSchema "NoUnsafePorts" (initialModuleContext check)
         |> Rule.withImportVisitor importVisitor
         |> Rule.withDeclarationListVisitor declarationListVisitor
         |> Rule.fromModuleRuleSchema
+
+
+{-| Check both incoming and outgoing ports.
+
+    config : List Rule
+    config =
+        [ NoUnsafePorts.rule NoUnsafePorts.any
+        ]
+
+This is the option you will want most of the time.
+
+-}
+any : Check
+any =
+    CheckAll
+
+
+{-| Check incoming ports only.
+
+    config : List Rule
+    config =
+        [ NoUnsafePorts.rule NoUnsafePorts.onlyIncomingPorts
+        ]
+
+Use this option if you want to allow basic types in outgoing ports.
+
+-}
+onlyIncomingPorts : Check
+onlyIncomingPorts =
+    Check IncomingPort
+
+
+
+--- VISITORS
 
 
 importVisitor : Node Import -> ModuleContext -> ( List (Error {}), ModuleContext )
@@ -90,13 +132,17 @@ checkDeclaration context node =
 
 
 checkPort : ModuleContext -> String -> Node TypeAnnotation -> Maybe PortType -> List (Error {})
-checkPort context name portArguments portReturnType =
-    case portReturnType of
-        Just IncomingPort ->
+checkPort ((Context { check }) as context) name portArguments maybePortType =
+    case Maybe.map (\portType -> ( portType, canCheck check portType )) maybePortType of
+        Just ( IncomingPort, True ) ->
             checkIncomingPort context name portArguments
 
-        Just OutgoingPort ->
+        Just ( OutgoingPort, True ) ->
             checkOutgoingPort context name portArguments
+
+        Just ( _, False ) ->
+            -- Config disabled this check
+            []
 
         Nothing ->
             -- There is something off about this port declaration. The compiler will complain about this.
@@ -166,17 +212,34 @@ type PortType
     | OutgoingPort
 
 
+type Check
+    = CheckAll
+    | Check PortType
+
+
 type ModuleContext
     = Context
         { aliases : Dict ModuleName ModuleName
+        , check : Check
         , imports : Dict String ModuleName
         }
 
 
-initialModuleContext : ModuleContext
-initialModuleContext =
+canCheck : Check -> PortType -> Bool
+canCheck check portType =
+    case check of
+        CheckAll ->
+            True
+
+        Check thisType ->
+            thisType == portType
+
+
+initialModuleContext : Check -> ModuleContext
+initialModuleContext check =
     Context
         { aliases = Dict.empty
+        , check = check
         , imports = Dict.empty
         }
 
