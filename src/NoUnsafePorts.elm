@@ -48,6 +48,13 @@ If a port expecting an `Int` receives a `Float` it will cause a runtime error. W
 
     port alarm : String -> Cmd msg
 
+
+## Caveats
+
+  - Outgoing ports must accept a `Value` from `Json.Encode` or `Json.Decode` and result in a `Cmd`.
+  - Incoming ports must expect a `Value` from `Json.Encode` or `Json.Decode` and result in a `Sub`.
+  - The rule looks for the types `Cmd`, `Sub` and `Value` only - do not alias these types.
+
 -}
 rule : Rule
 rule =
