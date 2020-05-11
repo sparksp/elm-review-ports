@@ -27,9 +27,9 @@ a = 1"""
             \_ ->
                 """
 port module A exposing (a)
-import Json.Encode as E
-port send : E.Value -> Cmd msg
-port recv : (E.Value -> msg) -> Sub msg
+import Json.Encode as Encode
+port send : Encode.Value -> Cmd msg
+port recv : (Encode.Value -> msg) -> Sub msg
 a = 1"""
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
@@ -37,14 +37,14 @@ a = 1"""
             \_ ->
                 [ """
 port module A exposing (a)
-import Json.Encode as E
-port send : E.Value -> Cmd msg
-port recv : (E.Value -> msg) -> Sub msg
+import Json.Encode as Encode
+port send : Encode.Value -> Cmd msg
+port recv : (Encode.Value -> msg) -> Sub msg
 a = 1""", """
 port module B exposing (b)
-import Json.Encode as E
-port send : E.Value -> Cmd msg
-port recv : (E.Value -> msg) -> Sub msg
+import Json.Encode as Encode
+port send : Encode.Value -> Cmd msg
+port recv : (Encode.Value -> msg) -> Sub msg
 b = 1""" ]
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules

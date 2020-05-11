@@ -10,18 +10,20 @@ Provides [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-revi
 ## Provided rules
 
 - [`NoDuplicatePorts`](https://package.elm-lang.org/packages/sparksp/elm-review-ports/latest/NoDuplicatePorts) - Ensure that port names are unique across your project.
+- [`NoUnusedPorts`](https://package.elm-lang.org/packages/sparksp/elm-review-ports/latest/NoDuplicatePorts) - Ensure that all defined ports have been used.
 
 ## Example configuration
 
 ```elm
-module ReviewConfig exposing (config)
-
 import NoDuplicatePorts
+import NoUnusedPorts
 import Review.Rule exposing (Rule)
 
 
 config : List Rule
 config =
     [ NoDuplicatePorts.rule
+    , NoUnusedPorts.rule
     ]
+
 ```
