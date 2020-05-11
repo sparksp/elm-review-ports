@@ -136,7 +136,122 @@ main = 1"""
 
 outgoingPortTests : Test
 outgoingPortTests =
-    Test.todo "outgoing ports"
+    describe "outgoing ports"
+        [ fuzz fuzzUnsafeType "unsafe type" <|
+            \unsafeType ->
+                outgoingPortModule unsafeType
+                    |> Review.Test.run rule
+                    |> Review.Test.expectErrors
+                        [ unsafeOutgoingPortError { name = "action", type_ = quote unsafeType, under = unsafeType }
+                        ]
+        , fuzz fuzzMaybeType "maybe type" <|
+            \maybeType ->
+                outgoingPortModule maybeType
+                    |> Review.Test.run rule
+                    |> Review.Test.expectErrors
+                        [ unsafeOutgoingPortError { name = "action", type_ = quote "Maybe", under = maybeType }
+                        ]
+        , fuzz fuzzListType "list type" <|
+            \listType ->
+                outgoingPortModule listType
+                    |> Review.Test.run rule
+                    |> Review.Test.expectErrors
+                        [ unsafeOutgoingPortError { name = "action", type_ = quote "List", under = listType }
+                        ]
+        , fuzz fuzzArrayType "array type" <|
+            \arrayType ->
+                outgoingPortModule arrayType
+                    |> Review.Test.run rule
+                    |> Review.Test.expectErrors
+                        [ unsafeOutgoingPortError { name = "action", type_ = quote "Array", under = arrayType }
+                        ]
+        , test "record type" <|
+            \_ ->
+                outgoingPortModule "{ message : String }"
+                    |> Review.Test.run rule
+                    |> Review.Test.expectErrors
+                        [ unsafeOutgoingPortError { name = "action", type_ = "record", under = "{ message : String }" }
+                        ]
+        , test "tuple type" <|
+            \_ ->
+                outgoingPortModule "( String, Int )"
+                    |> Review.Test.run rule
+                    |> Review.Test.expectErrors
+                        [ unsafeOutgoingPortError { name = "action", type_ = "tuple", under = "( String, Int )" }
+                        ]
+        , test "Json.Decode.Value type" <|
+            \_ ->
+                """
+module Main exposing (main)
+import Json.Decode
+port action : Json.Decode.Value -> Cmd msg
+main = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
+        , test "Json.Encode.Value type" <|
+            \_ ->
+                """
+module Main exposing (main)
+import Json.Encode
+port action : Json.Encode.Value -> Cmd msg
+main = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
+        , test "import Json.Decode exposing (Value) type" <|
+            \_ ->
+                """
+module Main exposing (main)
+import Json.Decode exposing (Value)
+port action : Value -> Cmd msg
+main = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
+        , test "import Json.Encode exposing (Value) type" <|
+            \_ ->
+                """
+module Main exposing (main)
+import Json.Encode exposing (Value)
+port action : Value -> Cmd msg
+main = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
+        , test "import Json.Decode exposing (..) Value type" <|
+            \_ ->
+                """
+module Main exposing (main)
+import Json.Decode exposing (..)
+port action : Value -> Cmd msg
+main = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
+        , test "import Json.Encode exposing (..) Value type" <|
+            \_ ->
+                """
+module Main exposing (main)
+import Json.Encode exposing (..)
+port action : Value -> Cmd msg
+main = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
+        , test "aliased Json.Decode.Value type" <|
+            \_ ->
+                """
+module Main exposing (main)
+import Json.Decode as D
+port action : D.Value -> Cmd msg
+main = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
+        , test "aliased Json.Encode.Value type" <|
+            \_ ->
+                """
+module Main exposing (main)
+import Json.Encode as E
+port action : E.Value -> Cmd msg
+main = 1"""
+                    |> Review.Test.run rule
+                    |> Review.Test.expectNoErrors
+        ]
 
 
 fuzzUnsafeType : Fuzzer String
@@ -191,11 +306,25 @@ unsafeIncomingPortError { name, type_, under } =
         }
 
 
+unsafeOutgoingPortError : { name : String, type_ : String, under : String } -> Review.Test.ExpectedError
+unsafeOutgoingPortError =
+    unsafeIncomingPortError
+
+
 incomingPortModule : String -> String
 incomingPortModule portType =
     String.join "\n"
         [ "module Main exposing (main)"
         , "port action : (" ++ portType ++ " -> msg) -> Sub msg"
+        , "main = 1"
+        ]
+
+
+outgoingPortModule : String -> String
+outgoingPortModule portType =
+    String.join "\n"
+        [ "module Main exposing (main)"
+        , "port action : " ++ portType ++ " -> Cmd msg"
         , "main = 1"
         ]
 

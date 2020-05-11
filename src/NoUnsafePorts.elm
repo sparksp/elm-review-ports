@@ -89,7 +89,7 @@ checkPort context name portArguments portReturnType =
             checkIncomingPort context name portArguments
 
         Just OutgoingPort ->
-            []
+            checkOutgoingPort context name portArguments
 
         Nothing ->
             -- There is something off about this port declaration. The compiler will complain about this.
@@ -100,30 +100,40 @@ checkIncomingPort : ModuleContext -> String -> Node TypeAnnotation -> List (Erro
 checkIncomingPort context name portArguments =
     case Node.value portArguments of
         TypeAnnotation.FunctionTypeAnnotation subMessageType _ ->
-            case Node.value subMessageType of
-                TypeAnnotation.Typed portType _ ->
-                    case expandFunctionCall context (Node.value portType) of
-                        ( [ "Json", "Decode" ], "Value" ) ->
-                            []
-
-                        ( [ "Json", "Encode" ], "Value" ) ->
-                            []
-
-                        expandedPortType ->
-                            [ unsafePortError name (Node.map (\_ -> formatType expandedPortType) subMessageType) ]
-
-                TypeAnnotation.Record _ ->
-                    [ unsafePortError name (Node.map (\_ -> "record") subMessageType) ]
-
-                TypeAnnotation.Tupled _ ->
-                    [ unsafePortError name (Node.map (\_ -> "tuple") subMessageType) ]
-
-                _ ->
-                    [ unsafePortError name (Node.map (\_ -> "type") subMessageType) ]
+            checkPortArguments context (unsafePortError name) subMessageType
 
         _ ->
             -- There is something off about this port declaration. The compiler will complain about this
             []
+
+
+checkOutgoingPort : ModuleContext -> String -> Node TypeAnnotation -> List (Error {})
+checkOutgoingPort context name portArguments =
+    checkPortArguments context (unsafePortError name) portArguments
+
+
+checkPortArguments : ModuleContext -> (Node String -> Error {}) -> Node TypeAnnotation -> List (Error {})
+checkPortArguments context makeError portArguments =
+    case Node.value portArguments of
+        TypeAnnotation.Typed portType _ ->
+            case expandFunctionCall context (Node.value portType) of
+                ( [ "Json", "Decode" ], "Value" ) ->
+                    []
+
+                ( [ "Json", "Encode" ], "Value" ) ->
+                    []
+
+                expandedPortType ->
+                    [ makeError (Node.map (\_ -> formatType expandedPortType) portArguments) ]
+
+        TypeAnnotation.Record _ ->
+            [ makeError (Node.map (\_ -> "record") portArguments) ]
+
+        TypeAnnotation.Tupled _ ->
+            [ makeError (Node.map (\_ -> "tuple") portArguments) ]
+
+        _ ->
+            [ makeError (Node.map (\_ -> "type") portArguments) ]
 
 
 getPortType : Node TypeAnnotation -> Maybe PortType
