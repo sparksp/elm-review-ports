@@ -20,9 +20,9 @@ main = "Hello"
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
                           , [ unusedPortError "alarm"
-                                |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
+                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 11 } }
                             , unusedPortError "action"
-                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.atExactly { start = { row = 5, column = 6 }, end = { row = 5, column = 12 } }
                             , unusedPortError "unused"
                             ]
                           )
@@ -32,15 +32,16 @@ main = "Hello"
                 [ portsModule
                 , """
 module Main exposing (main)
+import Json.Encode as E
 import Ports
-main = Ports.alarm "play"
+main = Ports.alarm (E.string "play")
 """
                 ]
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
                           , [ unusedPortError "action"
-                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.atExactly { start = { row = 5, column = 6 }, end = { row = 5, column = 12 } }
                             , unusedPortError "unused"
                             ]
                           )
@@ -50,15 +51,16 @@ main = Ports.alarm "play"
                 [ portsModule
                 , """
 module Main exposing (main)
+import Json.Encode as E
 import Ports exposing (alarm)
-main = alarm "play"
+main = alarm (E.string "play")
 """
                 ]
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
                           , [ unusedPortError "action"
-                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.atExactly { start = { row = 5, column = 6 }, end = { row = 5, column = 12 } }
                             , unusedPortError "unused"
                             ]
                           )
@@ -68,15 +70,16 @@ main = alarm "play"
                 [ portsModule
                 , """
 module Main exposing (main)
+import Json.Encode as E
 import Ports as P
-main = P.alarm "play"
+main = P.alarm (E.string "play")
 """
                 ]
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
                           , [ unusedPortError "action"
-                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.atExactly { start = { row = 5, column = 6 }, end = { row = 5, column = 12 } }
                             , unusedPortError "unused"
                             ]
                           )
@@ -86,15 +89,16 @@ main = P.alarm "play"
                 [ portsModule
                 , """
 module Main exposing (main)
+import Json.Encode as E
 import Ports exposing (..)
-main = alarm "play"
+main = alarm (E.string "play")
 """
                 ]
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
                           , [ unusedPortError "action"
-                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.atExactly { start = { row = 5, column = 6 }, end = { row = 5, column = 12 } }
                             , unusedPortError "unused"
                             ]
                           )
@@ -104,17 +108,18 @@ main = alarm "play"
                 [ portsModule
                 , """
 module Main exposing (main)
+import Json.Encode as E
 import Ports
 main = 1
-unused = Ports.alarm "play"
+unused = Ports.alarm (E.string "play")
 """
                 ]
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
-                          , [ unusedPortWithCallersError "alarm" [ "Main.unused" ] |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
+                          , [ unusedPortWithCallersError "alarm" [ "Main.unused" ] |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 11 } }
                             , unusedPortError "action"
-                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.atExactly { start = { row = 5, column = 6 }, end = { row = 5, column = 12 } }
                             , unusedPortError "unused"
                             ]
                           )
@@ -124,8 +129,9 @@ unused = Ports.alarm "play"
                 [ portsModule
                 , """
 module Main exposing (a)
+import Json.Encode as E
 import Ports
-main = Ports.alarm "play"
+main = Ports.alarm (E.string "play")
 a = 1
 """
                 ]
@@ -133,7 +139,7 @@ a = 1
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
                           , [ unusedPortError "action"
-                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.atExactly { start = { row = 5, column = 6 }, end = { row = 5, column = 12 } }
                             , unusedPortError "unused"
                             ]
                           )
@@ -143,15 +149,16 @@ a = 1
                 [ portsModule
                 , """
 module Main exposing (..)
+import Json.Encode as E
 import Ports
-main = Ports.alarm "play"
+main = Ports.alarm (E.string "play")
 """
                 ]
                     |> Review.Test.runOnModules rule
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
                           , [ unusedPortError "action"
-                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.atExactly { start = { row = 5, column = 6 }, end = { row = 5, column = 12 } }
                             , unusedPortError "unused"
                             ]
                           )
@@ -162,9 +169,10 @@ main = Ports.alarm "play"
                 , """
 module Page.Alarm exposing (update)
 
+import Json.Encode as E
 import Ports
 
-main = Ports.alarm "play"
+main = Ports.alarm (E.string "play")
 update = main
 """
                 , """
@@ -176,7 +184,7 @@ main = 1
                     |> Review.Test.expectErrorsForModules
                         [ ( "Ports"
                           , [ unusedPortError "action"
-                                |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 12 } }
+                                |> Review.Test.atExactly { start = { row = 5, column = 6 }, end = { row = 5, column = 12 } }
                             , unusedPortError "unused"
                             ]
                           )
@@ -187,6 +195,7 @@ main = 1
                 , """
 module Worker exposing (init, subscriptions, update)
 
+import Json.Encode as E
 import Ports
 
 
@@ -211,7 +220,7 @@ update msg model =
 
 
 play : Cmd Msg
-play = Ports.alarm "play"
+play = Ports.alarm (E.string "play")
 
 
 subscriptions : Model -> Sub Msg
@@ -260,7 +269,8 @@ moduleTests =
             \_ ->
                 """
 port module Ports exposing (a)
-port alarm : String -> Cmd msg
+import Json.Encode as E
+port alarm : E.Value -> Cmd msg
 a = 1"""
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
@@ -270,10 +280,11 @@ a = 1"""
             \_ ->
                 """
 port module Ports exposing (main)
-port alarm : String -> Cmd msg
-load = alarm "load"
-play = alarm "play"
-stop = alarm "stop"
+import Json.Encode as E
+port alarm : E.Value -> Cmd msg
+load = alarm (E.string "load")
+play = alarm (E.string "play")
+stop = alarm (E.string "stop")
 main = play
 """
                     |> Review.Test.run rule
@@ -282,7 +293,8 @@ main = play
             \_ ->
                 """
 port module Ports exposing (a)
-port action : (String -> msg) -> Sub msg
+import Json.Encode as E
+port action : (E.Value -> msg) -> Sub msg
 a = 1"""
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
@@ -292,8 +304,9 @@ a = 1"""
             \_ ->
                 """
 port module Ports exposing (main)
-port action : (String -> msg) -> Sub msg
-type ActionMsg = Action String
+import Json.Encode as E
+port action : (E.Value -> msg) -> Sub msg
+type ActionMsg = Action E.Value
 main = action Action
 """
                     |> Review.Test.run rule
@@ -302,25 +315,27 @@ main = action Action
             \_ ->
                 """
 port module Ports exposing (a)
-port alarm : String -> msg
-load = alarm "load"
-play = alarm "play"
-stop = alarm "stop"
+import Json.Encode as E
+port alarm : E.Value -> msg
+load = alarm (E.string "load")
+play = alarm (E.string "play")
+stop = alarm (E.string "stop")
 a = 1"""
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
                         [ unusedPortWithCallersError "alarm" [ "Ports.load", "Ports.play", "Ports.stop" ]
-                            |> Review.Test.atExactly { start = { row = 3, column = 6 }, end = { row = 3, column = 11 } }
+                            |> Review.Test.atExactly { start = { row = 4, column = 6 }, end = { row = 4, column = 11 } }
                         ]
         , test "do not report when port is used but functions are defined out of sequence" <|
             \_ ->
                 """
 port module Ports exposing (main)
-port alarm : String -> msg
+import Json.Encode as E
+port alarm : E.Value -> msg
 main = play
-load = alarm "load"
-play = alarm "play"
-stop = alarm "stop"
+load = alarm (E.string "load")
+play = alarm (E.string "play")
+stop = alarm (E.string "stop")
 """
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
@@ -328,11 +343,12 @@ stop = alarm "stop"
             \_ ->
                 """
 port module Main exposing (main)
+import Json.Encode as E
 main = update
 update = ping "play"
 ping cmd = pong (alarm cmd)
 pong cmd = ping (alarm cmd)
-port alarm : String -> msg
+port alarm : E.Value -> msg
 """
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
@@ -393,7 +409,8 @@ portsModule : String
 portsModule =
     """
 port module Ports exposing (alarm, action)
-port alarm : String -> Cmd msg
-port action : (String -> msg) -> Sub msg
-port unused : String -> Cmd msg
+import Json.Encode as E
+port alarm : E.Value -> Cmd msg
+port action : (E.Value -> msg) -> Sub msg
+port unused : E.Value -> Cmd msg
 """

@@ -52,17 +52,18 @@ Ports are not allowed in Elm packages - you should not enable this when developi
     port module Main exposing (main)
 
     import Html
+    import Json.Encode as E
 
 
     -- Port `action` is never used.
-    port action : (String -> msg) -> Sub msg
+    port action : (E.Value -> msg) -> Sub msg
 
-    port alarm : String -> msg
+    port alarm : E.Value -> msg
 
     -- Port `alarm` is never used, because `play` is never used.
     play : Cmd msg
     play =
-        alarm "play"
+        alarm (E.string "play")
 
     main =
         Html.text "Hello"
