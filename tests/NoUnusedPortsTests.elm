@@ -32,9 +32,9 @@ main = "Hello"
                 [ portsModule
                 , """
 module Main exposing (main)
-import Json.Encode as E
+import Json.Encode as Encode
 import Ports
-main = Ports.alarm (E.string "play")
+main = Ports.alarm (Encode.string "play")
 """
                 ]
                     |> Review.Test.runOnModules rule
@@ -51,9 +51,9 @@ main = Ports.alarm (E.string "play")
                 [ portsModule
                 , """
 module Main exposing (main)
-import Json.Encode as E
+import Json.Encode as Encode
 import Ports exposing (alarm)
-main = alarm (E.string "play")
+main = alarm (Encode.string "play")
 """
                 ]
                     |> Review.Test.runOnModules rule
@@ -70,9 +70,9 @@ main = alarm (E.string "play")
                 [ portsModule
                 , """
 module Main exposing (main)
-import Json.Encode as E
+import Json.Encode as Encode
 import Ports as P
-main = P.alarm (E.string "play")
+main = P.alarm (Encode.string "play")
 """
                 ]
                     |> Review.Test.runOnModules rule
@@ -89,9 +89,9 @@ main = P.alarm (E.string "play")
                 [ portsModule
                 , """
 module Main exposing (main)
-import Json.Encode as E
+import Json.Encode as Encode
 import Ports exposing (..)
-main = alarm (E.string "play")
+main = alarm (Encode.string "play")
 """
                 ]
                     |> Review.Test.runOnModules rule
@@ -108,10 +108,10 @@ main = alarm (E.string "play")
                 [ portsModule
                 , """
 module Main exposing (main)
-import Json.Encode as E
+import Json.Encode as Encode
 import Ports
 main = 1
-unused = Ports.alarm (E.string "play")
+unused = Ports.alarm (Encode.string "play")
 """
                 ]
                     |> Review.Test.runOnModules rule
@@ -129,9 +129,9 @@ unused = Ports.alarm (E.string "play")
                 [ portsModule
                 , """
 module Main exposing (a)
-import Json.Encode as E
+import Json.Encode as Encode
 import Ports
-main = Ports.alarm (E.string "play")
+main = Ports.alarm (Encode.string "play")
 a = 1
 """
                 ]
@@ -149,9 +149,9 @@ a = 1
                 [ portsModule
                 , """
 module Main exposing (..)
-import Json.Encode as E
+import Json.Encode as Encode
 import Ports
-main = Ports.alarm (E.string "play")
+main = Ports.alarm (Encode.string "play")
 """
                 ]
                     |> Review.Test.runOnModules rule
@@ -169,10 +169,10 @@ main = Ports.alarm (E.string "play")
                 , """
 module Page.Alarm exposing (update)
 
-import Json.Encode as E
+import Json.Encode as Encode
 import Ports
 
-main = Ports.alarm (E.string "play")
+main = Ports.alarm (Encode.string "play")
 update = main
 """
                 , """
@@ -195,7 +195,7 @@ main = 1
                 , """
 module Worker exposing (init, subscriptions, update)
 
-import Json.Encode as E
+import Json.Encode as Encode
 import Ports
 
 
@@ -220,7 +220,7 @@ update msg model =
 
 
 play : Cmd Msg
-play = Ports.alarm (E.string "play")
+play = Ports.alarm (Encode.string "play")
 
 
 subscriptions : Model -> Sub Msg
@@ -269,8 +269,8 @@ moduleTests =
             \_ ->
                 """
 port module Ports exposing (a)
-import Json.Encode as E
-port alarm : E.Value -> Cmd msg
+import Json.Encode as Encode
+port alarm : Encode.Value -> Cmd msg
 a = 1"""
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
@@ -280,11 +280,11 @@ a = 1"""
             \_ ->
                 """
 port module Ports exposing (main)
-import Json.Encode as E
-port alarm : E.Value -> Cmd msg
-load = alarm (E.string "load")
-play = alarm (E.string "play")
-stop = alarm (E.string "stop")
+import Json.Encode as Encode
+port alarm : Encode.Value -> Cmd msg
+load = alarm (Encode.string "load")
+play = alarm (Encode.string "play")
+stop = alarm (Encode.string "stop")
 main = play
 """
                     |> Review.Test.run rule
@@ -293,8 +293,8 @@ main = play
             \_ ->
                 """
 port module Ports exposing (a)
-import Json.Encode as E
-port action : (E.Value -> msg) -> Sub msg
+import Json.Encode as Encode
+port action : (Encode.Value -> msg) -> Sub msg
 a = 1"""
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
@@ -304,9 +304,9 @@ a = 1"""
             \_ ->
                 """
 port module Ports exposing (main)
-import Json.Encode as E
-port action : (E.Value -> msg) -> Sub msg
-type ActionMsg = Action E.Value
+import Json.Encode as Encode
+port action : (Encode.Value -> msg) -> Sub msg
+type ActionMsg = Action Encode.Value
 main = action Action
 """
                     |> Review.Test.run rule
@@ -315,11 +315,11 @@ main = action Action
             \_ ->
                 """
 port module Ports exposing (a)
-import Json.Encode as E
-port alarm : E.Value -> msg
-load = alarm (E.string "load")
-play = alarm (E.string "play")
-stop = alarm (E.string "stop")
+import Json.Encode as Encode
+port alarm : Encode.Value -> msg
+load = alarm (Encode.string "load")
+play = alarm (Encode.string "play")
+stop = alarm (Encode.string "stop")
 a = 1"""
                     |> Review.Test.run rule
                     |> Review.Test.expectErrors
@@ -330,12 +330,12 @@ a = 1"""
             \_ ->
                 """
 port module Ports exposing (main)
-import Json.Encode as E
-port alarm : E.Value -> msg
+import Json.Encode as Encode
+port alarm : Encode.Value -> msg
 main = play
-load = alarm (E.string "load")
-play = alarm (E.string "play")
-stop = alarm (E.string "stop")
+load = alarm (Encode.string "load")
+play = alarm (Encode.string "play")
+stop = alarm (Encode.string "stop")
 """
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
@@ -343,12 +343,12 @@ stop = alarm (E.string "stop")
             \_ ->
                 """
 port module Main exposing (main)
-import Json.Encode as E
+import Json.Encode as Encode
 main = update
 update = ping "play"
 ping cmd = pong (alarm cmd)
 pong cmd = ping (alarm cmd)
-port alarm : E.Value -> msg
+port alarm : Encode.Value -> msg
 """
                     |> Review.Test.run rule
                     |> Review.Test.expectNoErrors
@@ -409,8 +409,8 @@ portsModule : String
 portsModule =
     """
 port module Ports exposing (alarm, action)
-import Json.Encode as E
-port alarm : E.Value -> Cmd msg
-port action : (E.Value -> msg) -> Sub msg
-port unused : E.Value -> Cmd msg
+import Json.Encode as Encode
+port alarm : Encode.Value -> Cmd msg
+port action : (Encode.Value -> msg) -> Sub msg
+port unused : Encode.Value -> Cmd msg
 """
