@@ -19,7 +19,7 @@ import Review.Rule as Rule exposing (Error, Rule)
 import Set exposing (Set)
 
 
-{-| Forbid the use of ports that are never used in your project.
+{-| Forbid ports that are never used in your project.
 
     config : List Rule
     config =
