@@ -156,8 +156,8 @@ main = 1"""
             \_ ->
                 """
 module Main exposing (main)
-import Json.Encode as E
-port action : (E.Value -> msg) -> Sub msg
+import Json.Encode as Encode
+port action : (Encode.Value -> msg) -> Sub msg
 main = 1"""
                     |> Review.Test.run (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
@@ -276,8 +276,8 @@ main = 1"""
             \_ ->
                 """
 module Main exposing (main)
-import Json.Encode as E
-port action : E.Value -> Cmd msg
+import Json.Encode as Encode
+port action : Encode.Value -> Cmd msg
 main = 1"""
                     |> Review.Test.run (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
