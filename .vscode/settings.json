@@ -1,8 +1,12 @@
 {
     "cSpell.enabled": true,
     "cSpell.words": [
+        "concat",
         "Dict",
         "foldl",
-        "tuples"
+        "Fuzzer",
+        "tuple",
+        "Tupled",
+        "tuples",
     ]
 }

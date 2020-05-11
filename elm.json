@@ -1,11 +1,12 @@
 {
     "type": "package",
     "name": "sparksp/elm-review-ports",
-    "summary": "Provides elm-review rules to detect errant elm ports.",
+    "summary": "Provides elm-review rules to detect problematic elm ports.",
     "license": "MIT",
     "version": "1.1.0",
     "exposed-modules": [
         "NoDuplicatePorts",
+        "NoUnsafePorts",
         "NoUnusedPorts"
     ],
     "elm-version": "0.19.0 <= v < 0.20.0",

@@ -1,7 +1,7 @@
 {
   "name": "review-ports",
   "version": "1.1.0",
-  "description": "Review checks for your Elm ports",
+  "description": "Provides elm-review rules to detect problematic elm ports.",
   "repository": "https://github.com/github:sparksp/elm-review-ports",
   "author": "Phill Sparks <me@phills.me.uk>",
   "license": "MIT",
