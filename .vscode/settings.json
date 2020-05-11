@@ -3,6 +3,9 @@
     "cSpell.words": [
         "Dict",
         "foldl",
+        "Fuzzer",
+        "tuple",
+        "Tupled",
         "tuples"
     ]
 }
