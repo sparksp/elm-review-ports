@@ -21,7 +21,7 @@ import Elm.Syntax.Import exposing (Import)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
 import Elm.Syntax.TypeAnnotation as TypeAnnotation exposing (TypeAnnotation)
-import Review.Rule as Rule exposing (Error, Rule)
+import Review.Rule as Rule exposing (Rule)
 
 
 {-| Forbid unsafe types in ports.
@@ -107,17 +107,17 @@ onlyIncomingPorts =
 --- VISITORS
 
 
-importVisitor : Node Import -> ModuleContext -> ( List (Error {}), ModuleContext )
+importVisitor : Node Import -> ModuleContext -> ( List nothing, ModuleContext )
 importVisitor node context =
     ( [], rememberImportedModule (Node.value node) context )
 
 
-declarationListVisitor : List (Node Declaration) -> ModuleContext -> ( List (Error {}), ModuleContext )
+declarationListVisitor : List (Node Declaration) -> ModuleContext -> ( List (Rule.Error {}), ModuleContext )
 declarationListVisitor nodes context =
-    ( List.concatMap (checkDeclaration context) nodes, context )
+    ( fastConcatMap (checkDeclaration context) nodes, context )
 
 
-checkDeclaration : ModuleContext -> Node Declaration -> List (Error {})
+checkDeclaration : ModuleContext -> Node Declaration -> List (Rule.Error {})
 checkDeclaration context node =
     case Node.value node of
         Declaration.PortDeclaration { name, typeAnnotation } ->
@@ -132,7 +132,7 @@ checkDeclaration context node =
             []
 
 
-checkPort : ModuleContext -> String -> Node TypeAnnotation -> Maybe PortType -> List (Error {})
+checkPort : ModuleContext -> String -> Node TypeAnnotation -> Maybe PortType -> List (Rule.Error {})
 checkPort ((Context { check }) as context) name portArguments maybePortType =
     case Maybe.map (\portType -> ( portType, canCheck check portType )) maybePortType of
         Just ( IncomingPort, True ) ->
@@ -150,7 +150,7 @@ checkPort ((Context { check }) as context) name portArguments maybePortType =
             []
 
 
-checkIncomingPort : ModuleContext -> String -> Node TypeAnnotation -> List (Error {})
+checkIncomingPort : ModuleContext -> String -> Node TypeAnnotation -> List (Rule.Error {})
 checkIncomingPort context name portArguments =
     case Node.value portArguments of
         TypeAnnotation.FunctionTypeAnnotation subMessageType _ ->
@@ -161,12 +161,12 @@ checkIncomingPort context name portArguments =
             []
 
 
-checkOutgoingPort : ModuleContext -> String -> Node TypeAnnotation -> List (Error {})
+checkOutgoingPort : ModuleContext -> String -> Node TypeAnnotation -> List (Rule.Error {})
 checkOutgoingPort context name portArguments =
     checkPortArguments context (unsafeOutgoingPortError name) portArguments
 
 
-checkPortArguments : ModuleContext -> (Node String -> Error {}) -> Node TypeAnnotation -> List (Error {})
+checkPortArguments : ModuleContext -> (Node String -> Rule.Error {}) -> Node TypeAnnotation -> List (Rule.Error {})
 checkPortArguments context makeError portArguments =
     case Node.value portArguments of
         TypeAnnotation.Typed portType _ ->
@@ -351,7 +351,7 @@ lookupModuleAlias aliases moduleName =
         |> Maybe.withDefault moduleName
 
 
-unsafeIncomingPortError : String -> Node String -> Error {}
+unsafeIncomingPortError : String -> Node String -> Rule.Error {}
 unsafeIncomingPortError name portType =
     Rule.error
         { message = "Port `" ++ name ++ "` expects unsafe " ++ Node.value portType ++ " data."
@@ -363,7 +363,7 @@ unsafeIncomingPortError name portType =
         (Node.range portType)
 
 
-unsafeOutgoingPortError : String -> Node String -> Error {}
+unsafeOutgoingPortError : String -> Node String -> Rule.Error {}
 unsafeOutgoingPortError name portType =
     Rule.error
         { message = "Port `" ++ name ++ "` sends unsafe " ++ Node.value portType ++ " data."
@@ -378,3 +378,12 @@ unsafeOutgoingPortError name portType =
 formatType : ( ModuleName, String ) -> String
 formatType ( moduleName, name ) =
     "`" ++ String.join "." (moduleName ++ [ name ]) ++ "`"
+
+
+
+--- FASTER LIST OPERATIONS
+
+
+fastConcatMap : (a -> List b) -> List a -> List b
+fastConcatMap fn list =
+    List.foldr (fn >> (++)) [] list

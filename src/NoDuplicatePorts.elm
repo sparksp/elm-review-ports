@@ -11,7 +11,7 @@ import Elm.Syntax.Declaration as Declaration exposing (Declaration)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
 import Elm.Syntax.Range exposing (Range)
-import Review.Rule as Rule exposing (Direction, Error, Rule)
+import Review.Rule as Rule exposing (Rule)
 
 
 {-| Forbid duplicate port names in your project.
@@ -54,17 +54,22 @@ rule =
 moduleVisitor : Rule.ModuleRuleSchema {} ModuleContext -> Rule.ModuleRuleSchema { hasAtLeastOneVisitor : () } ModuleContext
 moduleVisitor schema =
     schema
-        |> Rule.withDeclarationVisitor declarationVisitor
+        |> Rule.withDeclarationListVisitor declarationListVisitor
 
 
-declarationVisitor : Node Declaration -> Direction -> ModuleContext -> ( List (Error {}), ModuleContext )
-declarationVisitor node direction context =
-    case ( direction, Node.value node ) of
-        ( Rule.OnEnter, Declaration.PortDeclaration { name } ) ->
-            ( [], Dict.insert (Node.value name) (Node.range name) context )
+declarationListVisitor : List (Node Declaration) -> ModuleContext -> ( List nothing, ModuleContext )
+declarationListVisitor nodes context =
+    ( [], List.foldl rememberPortDeclaration context nodes )
+
+
+rememberPortDeclaration : Node Declaration -> ModuleContext -> ModuleContext
+rememberPortDeclaration node context =
+    case Node.value node of
+        Declaration.PortDeclaration { name } ->
+            Dict.insert (Node.value name) (Node.range name) context
 
         _ ->
-            ( [], context )
+            context
 
 
 type alias PortLocation =
@@ -109,14 +114,14 @@ mergePortLocationDicts portName newLocations oldLocations =
     Dict.insert portName (Dict.union newLocations oldLocations)
 
 
-finalProjectEvaluation : ProjectContext -> List (Error scope)
+finalProjectEvaluation : ProjectContext -> List (Rule.Error scope)
 finalProjectEvaluation projectContext =
     projectContext
         |> Dict.toList
-        |> List.concatMap errorsFromPortLocations
+        |> fastConcatMap errorsFromPortLocations
 
 
-errorsFromPortLocations : ( String, Dict ModuleName PortLocation ) -> List (Error scope)
+errorsFromPortLocations : ( String, Dict ModuleName PortLocation ) -> List (Rule.Error scope)
 errorsFromPortLocations ( portName, locations ) =
     if Dict.size locations < 2 then
         []
@@ -127,7 +132,7 @@ errorsFromPortLocations ( portName, locations ) =
             |> List.map (errorFromPortLocation portName)
 
 
-errorFromPortLocation : String -> ( Rule.ModuleKey, Range ) -> Error scope
+errorFromPortLocation : String -> ( Rule.ModuleKey, Range ) -> Rule.Error scope
 errorFromPortLocation portName ( moduleKey, range ) =
     Rule.errorForModule moduleKey (error portName) range
 
@@ -137,3 +142,12 @@ error portName =
     { message = String.concat [ "Another port named `", portName, "` already exists." ]
     , details = [ "When there are multiple ports with the same name you may encounter a JavaScript runtime error." ]
     }
+
+
+
+--- FASTER LIST OPERATIONS
+
+
+fastConcatMap : (a -> List b) -> List a -> List b
+fastConcatMap fn list =
+    List.foldr (fn >> (++)) [] list

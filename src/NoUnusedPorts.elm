@@ -15,7 +15,7 @@ import Elm.Syntax.Module as Module exposing (Module)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
 import Elm.Syntax.Range exposing (Range)
-import Review.Rule as Rule exposing (Error, Rule)
+import Review.Rule as Rule exposing (Rule)
 import Set exposing (Set)
 
 
@@ -93,8 +93,8 @@ moduleVisitor schema =
         |> Rule.withModuleDefinitionVisitor moduleDefinitionVisitor
         |> Rule.withImportVisitor (guardedDeclarationVisitor importVisitor)
         |> Rule.withDeclarationListVisitor (guardedDeclarationVisitor declarationListVisitor)
-        |> Rule.withDeclarationVisitor (guardedExpressionVisitor declarationVisitor)
-        |> Rule.withExpressionVisitor (guardedExpressionVisitor expressionVisitor)
+        |> Rule.withDeclarationEnterVisitor (guardedExpressionVisitor declarationVisitor)
+        |> Rule.withExpressionEnterVisitor (guardedExpressionVisitor expressionVisitor)
 
 
 {-| Only visit imports and declaration lists if are a port module or know about any ports.
@@ -103,7 +103,7 @@ moduleVisitor schema =
   - We may declare our own ports.
 
 -}
-guardedDeclarationVisitor : (a -> ModuleContext -> ( List (Error {}), ModuleContext )) -> a -> ModuleContext -> ( List (Error {}), ModuleContext )
+guardedDeclarationVisitor : (a -> ModuleContext -> ( List error, ModuleContext )) -> a -> ModuleContext -> ( List error, ModuleContext )
 guardedDeclarationVisitor visitor a context =
     if context.isPortModule || context.hasPorts then
         visitor a context
@@ -118,16 +118,16 @@ guardedDeclarationVisitor visitor a context =
   - We may have declared our own ports.
 
 -}
-guardedExpressionVisitor : (a -> b -> ModuleContext -> ( List (Error {}), ModuleContext )) -> a -> b -> ModuleContext -> ( List (Error {}), ModuleContext )
-guardedExpressionVisitor visitor a b context =
+guardedExpressionVisitor : (Node a -> ModuleContext -> ( List error, ModuleContext )) -> Node a -> ModuleContext -> ( List error, ModuleContext )
+guardedExpressionVisitor visitor a context =
     if context.hasPorts then
-        visitor a b context
+        visitor a context
 
     else
         ( [], context )
 
 
-moduleDefinitionVisitor : Node Module -> ModuleContext -> ( List (Error {}), ModuleContext )
+moduleDefinitionVisitor : Node Module -> ModuleContext -> ( List nothing, ModuleContext )
 moduleDefinitionVisitor node context =
     case Node.value node of
         Module.PortModule _ ->
@@ -137,20 +137,20 @@ moduleDefinitionVisitor node context =
             ( [], { context | isPortModule = False } )
 
 
-importVisitor : Node Import -> ModuleContext -> ( List (Error {}), ModuleContext )
+importVisitor : Node Import -> ModuleContext -> ( List nothing, ModuleContext )
 importVisitor node context =
     ( [], rememberImportedModule (Node.value node) context )
 
 
-declarationListVisitor : List (Node Declaration) -> ModuleContext -> ( List (Error {}), ModuleContext )
+declarationListVisitor : List (Node Declaration) -> ModuleContext -> ( List nothing, ModuleContext )
 declarationListVisitor declarations context =
     ( [], List.foldl rememberDeclaration context declarations )
 
 
-declarationVisitor : Node Declaration -> Rule.Direction -> ModuleContext -> ( List (Error {}), ModuleContext )
-declarationVisitor node direction context =
-    case ( direction, Node.value node ) of
-        ( Rule.OnEnter, Declaration.FunctionDeclaration { declaration } ) ->
+declarationVisitor : Node Declaration -> ModuleContext -> ( List nothing, ModuleContext )
+declarationVisitor node context =
+    case Node.value node of
+        Declaration.FunctionDeclaration { declaration } ->
             let
                 name : String
                 name =
@@ -162,17 +162,17 @@ declarationVisitor node direction context =
             ( [], context )
 
 
-expressionVisitor : Node Expression -> Rule.Direction -> ModuleContext -> ( List (Error {}), ModuleContext )
-expressionVisitor node direction context =
-    case ( direction, Node.value node ) of
-        ( Rule.OnEnter, Expression.FunctionOrValue moduleName name ) ->
+expressionVisitor : Node Expression -> ModuleContext -> ( List nothing, ModuleContext )
+expressionVisitor node context =
+    case Node.value node of
+        Expression.FunctionOrValue moduleName name ->
             ( [], rememberFunctionCall ( moduleName, name ) context )
 
         _ ->
             ( [], context )
 
 
-finalEvaluation : ProjectContext -> List (Error scope)
+finalEvaluation : ProjectContext -> List (Rule.Error scope)
 finalEvaluation { functionCalls, ports } =
     ports |> Dict.toList |> List.map (reportUnusedPort functionCalls)
 
@@ -181,7 +181,7 @@ finalEvaluation { functionCalls, ports } =
 --- REPORT
 
 
-reportUnusedPort : FunctionCalls -> ( ( ModuleName, String ), Port ) -> Error scope
+reportUnusedPort : FunctionCalls -> ( ( ModuleName, String ), Port ) -> Rule.Error scope
 reportUnusedPort functionCalls ( ( moduleName, portName ), Port { range, moduleKey } ) =
     let
         callers : Maybe (Set ( ModuleName, String ))
