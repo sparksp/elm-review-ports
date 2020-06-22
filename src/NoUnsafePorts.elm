@@ -114,7 +114,7 @@ importVisitor node context =
 
 declarationListVisitor : List (Node Declaration) -> ModuleContext -> ( List (Error {}), ModuleContext )
 declarationListVisitor nodes context =
-    ( List.concatMap (checkDeclaration context) nodes, context )
+    ( fastConcatMap (checkDeclaration context) nodes, context )
 
 
 checkDeclaration : ModuleContext -> Node Declaration -> List (Error {})
@@ -378,3 +378,12 @@ unsafeOutgoingPortError name portType =
 formatType : ( ModuleName, String ) -> String
 formatType ( moduleName, name ) =
     "`" ++ String.join "." (moduleName ++ [ name ]) ++ "`"
+
+
+
+--- FASTER LIST OPERATIONS
+
+
+fastConcatMap : (a -> List b) -> List a -> List b
+fastConcatMap fn list =
+    List.foldr (fn >> (++)) [] list

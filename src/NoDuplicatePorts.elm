@@ -118,7 +118,7 @@ finalProjectEvaluation : ProjectContext -> List (Error scope)
 finalProjectEvaluation projectContext =
     projectContext
         |> Dict.toList
-        |> List.concatMap errorsFromPortLocations
+        |> fastConcatMap errorsFromPortLocations
 
 
 errorsFromPortLocations : ( String, Dict ModuleName PortLocation ) -> List (Error scope)
@@ -142,3 +142,12 @@ error portName =
     { message = String.concat [ "Another port named `", portName, "` already exists." ]
     , details = [ "When there are multiple ports with the same name you may encounter a JavaScript runtime error." ]
     }
+
+
+
+--- FASTER LIST OPERATIONS
+
+
+fastConcatMap : (a -> List b) -> List a -> List b
+fastConcatMap fn list =
+    List.foldr (fn >> (++)) [] list
