@@ -11,7 +11,7 @@ import Elm.Syntax.Declaration as Declaration exposing (Declaration)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
 import Elm.Syntax.Range exposing (Range)
-import Review.Rule as Rule exposing (Direction, Error, Rule)
+import Review.Rule as Rule exposing (Error, Rule)
 
 
 {-| Forbid duplicate port names in your project.
@@ -54,17 +54,22 @@ rule =
 moduleVisitor : Rule.ModuleRuleSchema {} ModuleContext -> Rule.ModuleRuleSchema { hasAtLeastOneVisitor : () } ModuleContext
 moduleVisitor schema =
     schema
-        |> Rule.withDeclarationVisitor declarationVisitor
+        |> Rule.withDeclarationListVisitor declarationListVisitor
 
 
-declarationVisitor : Node Declaration -> Direction -> ModuleContext -> ( List (Error {}), ModuleContext )
-declarationVisitor node direction context =
-    case ( direction, Node.value node ) of
-        ( Rule.OnEnter, Declaration.PortDeclaration { name } ) ->
-            ( [], Dict.insert (Node.value name) (Node.range name) context )
+declarationListVisitor : List (Node Declaration) -> ModuleContext -> ( List nothing, ModuleContext )
+declarationListVisitor nodes context =
+    ( [], List.foldl rememberPortDeclaration context nodes )
+
+
+rememberPortDeclaration : Node Declaration -> ModuleContext -> ModuleContext
+rememberPortDeclaration node context =
+    case Node.value node of
+        Declaration.PortDeclaration { name } ->
+            Dict.insert (Node.value name) (Node.range name) context
 
         _ ->
-            ( [], context )
+            context
 
 
 type alias PortLocation =
