@@ -15,7 +15,7 @@ import Elm.Syntax.Module as Module exposing (Module)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
 import Elm.Syntax.Range exposing (Range)
-import Review.Rule as Rule exposing (Error, Rule)
+import Review.Rule as Rule exposing (Rule)
 import Set exposing (Set)
 
 
@@ -172,7 +172,7 @@ expressionVisitor node context =
             ( [], context )
 
 
-finalEvaluation : ProjectContext -> List (Error scope)
+finalEvaluation : ProjectContext -> List (Rule.Error scope)
 finalEvaluation { functionCalls, ports } =
     ports |> Dict.toList |> List.map (reportUnusedPort functionCalls)
 
@@ -181,7 +181,7 @@ finalEvaluation { functionCalls, ports } =
 --- REPORT
 
 
-reportUnusedPort : FunctionCalls -> ( ( ModuleName, String ), Port ) -> Error scope
+reportUnusedPort : FunctionCalls -> ( ( ModuleName, String ), Port ) -> Rule.Error scope
 reportUnusedPort functionCalls ( ( moduleName, portName ), Port { range, moduleKey } ) =
     let
         callers : Maybe (Set ( ModuleName, String ))

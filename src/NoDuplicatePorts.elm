@@ -11,7 +11,7 @@ import Elm.Syntax.Declaration as Declaration exposing (Declaration)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
 import Elm.Syntax.Range exposing (Range)
-import Review.Rule as Rule exposing (Error, Rule)
+import Review.Rule as Rule exposing (Rule)
 
 
 {-| Forbid duplicate port names in your project.
@@ -114,14 +114,14 @@ mergePortLocationDicts portName newLocations oldLocations =
     Dict.insert portName (Dict.union newLocations oldLocations)
 
 
-finalProjectEvaluation : ProjectContext -> List (Error scope)
+finalProjectEvaluation : ProjectContext -> List (Rule.Error scope)
 finalProjectEvaluation projectContext =
     projectContext
         |> Dict.toList
         |> fastConcatMap errorsFromPortLocations
 
 
-errorsFromPortLocations : ( String, Dict ModuleName PortLocation ) -> List (Error scope)
+errorsFromPortLocations : ( String, Dict ModuleName PortLocation ) -> List (Rule.Error scope)
 errorsFromPortLocations ( portName, locations ) =
     if Dict.size locations < 2 then
         []
@@ -132,7 +132,7 @@ errorsFromPortLocations ( portName, locations ) =
             |> List.map (errorFromPortLocation portName)
 
 
-errorFromPortLocation : String -> ( Rule.ModuleKey, Range ) -> Error scope
+errorFromPortLocation : String -> ( Rule.ModuleKey, Range ) -> Rule.Error scope
 errorFromPortLocation portName ( moduleKey, range ) =
     Rule.errorForModule moduleKey (error portName) range
 
