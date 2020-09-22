@@ -1,7 +1,7 @@
-# review-ports
+# elm-review-ports
 
 ![elm package](https://img.shields.io/elm-package/v/sparksp/elm-review-ports)
-![elm-review 2.0](https://img.shields.io/badge/elm--review-2.0-%231293D8)
+![elm-review 2.3](https://img.shields.io/badge/elm--review-2.3-%231293D8)
 ![elm 0.19](https://img.shields.io/badge/elm-0.19-%231293D8)
 ![Tests](https://github.com/sparksp/elm-review-ports/workflows/Tests/badge.svg)
 
@@ -9,11 +9,12 @@ Provides [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-revi
 
 ## Provided rules
 
-- [`NoDuplicatePorts`](https://package.elm-lang.org/packages/sparksp/elm-review-ports/latest/NoDuplicatePorts) - Ensure that port names are unique across your project.
-- [`NoUnsafePorts`](https://package.elm-lang.org/packages/sparksp/elm-review-ports/latest/NoUnsafePorts) - Forbid unsafe types in ports.
-- [`NoUnusedPorts`](https://package.elm-lang.org/packages/sparksp/elm-review-ports/latest/NoUnusedPorts) - Ensure that all defined ports have been used.
+- [`NoDuplicatePorts`](https://package.elm-lang.org/packages/sparksp/elm-review-ports/1.2.0/NoDuplicatePorts) - Ensure that port names are unique across your project.
+- [`NoUnsafePorts`](https://package.elm-lang.org/packages/sparksp/elm-review-ports/1.2.0/NoUnsafePorts) - Forbid unsafe types in ports.
+- [`NoUnusedPorts`](https://package.elm-lang.org/packages/sparksp/elm-review-ports/1.2.0/NoUnusedPorts) - Ensure that all defined ports have been used.
 
-## Example configuration
+
+## Configuration
 
 ```elm
 import NoDuplicatePorts
@@ -28,5 +29,13 @@ config =
     , NoUnsafePorts.rule NoUnsafePorts.any
     , NoUnusedPorts.rule
     ]
+```
 
+
+## Try it out
+
+You can try the example configuration above out by running the following command:
+
+```bash
+elm-review --template sparksp/elm-review-ports/example
 ```
