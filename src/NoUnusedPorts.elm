@@ -303,6 +303,7 @@ type alias SearchContext =
 fromModuleToProject : Rule.ModuleKey -> Node ModuleName -> ModuleContext -> ProjectContext
 fromModuleToProject _ _ { functionCalls, moduleName, ports } =
     let
+        finder : ( ModuleName, String ) -> Port -> SearchContext -> SearchContext
         finder =
             findUsedPort
                 { calls = Set.empty
@@ -373,6 +374,7 @@ insertOrSetFunctionCall item maybeSet =
 foldProjectContexts : ProjectContext -> ProjectContext -> ProjectContext
 foldProjectContexts a b =
     let
+        usedPorts : ProjectPorts
         usedPorts =
             mergePorts a.usedPorts b.usedPorts
     in
@@ -476,6 +478,7 @@ rememberDeclaration node context =
 rememberPort : Node String -> ModuleContext -> ModuleContext
 rememberPort node context =
     let
+        portName : ( ModuleName, String )
         portName =
             ( context.moduleName, Node.value node )
     in
@@ -493,6 +496,7 @@ rememberCurrentFunction function context =
 rememberFunctionCall : ( ModuleName, String ) -> ModuleContext -> ModuleContext
 rememberFunctionCall function context =
     let
+        functionCall : ( ModuleName, String )
         functionCall =
             expandFunctionCall context function
     in
