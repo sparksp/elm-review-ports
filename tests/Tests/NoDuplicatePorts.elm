@@ -1,4 +1,4 @@
-module NoDuplicatePortsTests exposing (all)
+module Tests.NoDuplicatePorts exposing (all)
 
 import NoDuplicatePorts exposing (rule)
 import Review.Test
