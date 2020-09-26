@@ -1,6 +1,6 @@
 module NoUnsafePorts exposing
     ( rule
-    , any, onlyIncomingPorts
+    , any, onlyIncomingPorts, Check
     )
 
 {-|
@@ -10,7 +10,7 @@ module NoUnsafePorts exposing
 
 ## Config
 
-@docs any, onlyIncomingPorts
+@docs any, onlyIncomingPorts, Check
 
 -}
 
@@ -101,6 +101,13 @@ Use this option if you want to allow basic types in outgoing ports.
 onlyIncomingPorts : Check
 onlyIncomingPorts =
     Check IncomingPort
+
+
+{-| Check type.
+-}
+type Check
+    = CheckAll
+    | Check PortType
 
 
 
@@ -211,11 +218,6 @@ getPortType portReturnType =
 type PortType
     = IncomingPort
     | OutgoingPort
-
-
-type Check
-    = CheckAll
-    | Check PortType
 
 
 type ModuleContext

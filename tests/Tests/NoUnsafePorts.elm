@@ -1,4 +1,4 @@
-module NoUnsafePortsTests exposing (all)
+module Tests.NoUnsafePorts exposing (all)
 
 import Fuzz exposing (Fuzzer)
 import NoUnsafePorts exposing (onlyIncomingPorts, rule)

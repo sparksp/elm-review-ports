@@ -1,4 +1,4 @@
-module NoUnusedPortsTests exposing (all)
+module Tests.NoUnusedPorts exposing (all)
 
 import NoUnusedPorts exposing (rule)
 import Review.Test
