@@ -3,7 +3,7 @@
     "name": "sparksp/elm-review-ports",
     "summary": "Provides elm-review rules to detect problematic elm ports.",
     "license": "MIT",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "exposed-modules": [
         "NoDuplicatePorts",
         "NoUnsafePorts",
