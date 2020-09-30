@@ -49,19 +49,24 @@ You can therefore have `preview/with-configuration-A/` and `preview/with-configu
 
 The CI will automatically try to publish a new version of the package when the version in the `elm.json` is bumped. There is **no need** to add the Git tag or to run `elm publish` yourself! More details [here](https://github.com/dillonkearns/elm-publish-action).
 
+Releases should be made in a Pull Request to make sure all the checks pass - when the pull request gets merged the release will happen automatically.
+
 Here is a script that you can run to publish your package, which will help you avoid errors showing up at the CI stage.
 
 ```bash
 # Bump the version of the package
 elm bump
 
-# Run elm-review, which will for instance auto-fix like documentation links
+# You can use the new version here instead of `latest`
+git checkout -b release-latest
+
+# Run elm-review, which will auto-fix documentation links
 elm-review --fix-all
 
-# Run the tests, fix them if necessary
-yarn test
+# Run all the tests and fix errors if necessary
+yarn run all
 
-# Update the example configurations to reflect what was previously in the
+# Update the example configurations to reflect what is now in the
 # preview configurations
 node maintenance/update-examples-from-preview.js
 
@@ -70,5 +75,5 @@ git add --all
 git commit
 git push origin HEAD
 
-# Now wait for CI to finish
+# Now create a Pull Request and merge that on GitHub
 ```
