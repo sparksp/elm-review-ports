@@ -21,4 +21,5 @@ config : List Rule
 config =
     [ NoDuplicatePorts.rule
     , NoUnsafePorts.rule NoUnsafePorts.any
+    , NoUnusedPorts.rule
     ]
