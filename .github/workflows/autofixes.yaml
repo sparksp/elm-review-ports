@@ -29,7 +29,12 @@ jobs:
 
       - name: Install dependencies
         if: steps.yarn-cache.outputs.cache-hit != 'true'
+        env:
+          NO_ELM_TOOLING_INSTALL: 1
         run: yarn install --frozen-lockfile
+
+      - name: Install elm tooling
+        run: npx --no-install elm-tooling install
 
       - name: Run elm-format
         run: npx --no-install elm-format --yes
@@ -73,7 +78,12 @@ jobs:
 
       - name: Install dependencies
         if: steps.yarn-cache.outputs.cache-hit != 'true'
+        env:
+          NO_ELM_TOOLING_INSTALL: 1
         run: yarn install --frozen-lockfile
+
+      - name: Install elm tooling
+        run: npx --no-install elm-tooling install
 
       - name: Build elm docs
         run: npx --no-install elm make --docs docs.json

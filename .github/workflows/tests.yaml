@@ -25,7 +25,12 @@ jobs:
 
       - name: Install dependencies
         if: steps.yarn-cache.outputs.cache-hit != 'true'
+        env:
+          NO_ELM_TOOLING_INSTALL: 1
         run: yarn install --frozen-lockfile
+
+      - name: Install elm tooling
+        run: npx --no-install elm-tooling install
 
       - name: Build elm
         run: npx --no-install elm make --output /dev/null
@@ -53,7 +58,12 @@ jobs:
 
       - name: Install dependencies
         if: steps.yarn-cache.outputs.cache-hit != 'true'
+        env:
+          NO_ELM_TOOLING_INSTALL: 1
         run: yarn install --frozen-lockfile
+
+      - name: Install elm tooling
+        run: npx --no-install elm-tooling install
 
       - name: Run elm-review
         run: npx --no-install elm-review
@@ -81,7 +91,12 @@ jobs:
 
       - name: Install dependencies
         if: steps.yarn-cache.outputs.cache-hit != 'true'
+        env:
+          NO_ELM_TOOLING_INSTALL: 1
         run: yarn install --frozen-lockfile
+
+      - name: Install elm tooling
+        run: npx --no-install elm-tooling install
 
       - name: Check docs.json is up to date
         run: |
@@ -110,10 +125,15 @@ jobs:
 
       - name: Install dependencies
         if: steps.yarn-cache.outputs.cache-hit != 'true'
+        env:
+          NO_ELM_TOOLING_INSTALL: 1
         run: yarn install --frozen-lockfile
 
+      - name: Install elm tooling
+        run: npx --no-install elm-tooling install
+
       - name: Check that preview/ compiles
-        run: node elm-review-package-tests/check-previews-compile.js
+        run: npx --no-install node elm-review-package-tests/check-previews-compile.js
 
       - name: Publish package
         uses: dillonkearns/elm-publish-action@1.0.1
