@@ -139,3 +139,4 @@ jobs:
         uses: dillonkearns/elm-publish-action@1.1.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-elm: ./node_modules/.bin/elm
