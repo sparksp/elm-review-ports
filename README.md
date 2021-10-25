@@ -1,7 +1,7 @@
 # elm-review-ports
 
 ![elm package](https://img.shields.io/elm-package/v/sparksp/elm-review-ports)
-![elm-review 2.3](https://img.shields.io/badge/elm--review-2.3-%231293D8)
+![elm-review 2.6](https://img.shields.io/badge/elm--review-2.6-%231293D8)
 ![elm 0.19](https://img.shields.io/badge/elm-0.19-%231293D8)
 ![Tests](https://github.com/sparksp/elm-review-ports/workflows/Tests/badge.svg)
 
