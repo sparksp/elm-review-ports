@@ -16,11 +16,10 @@ module NoUnsafePorts exposing
 
 import Dict exposing (Dict)
 import Elm.Syntax.Declaration as Declaration exposing (Declaration)
-import Elm.Syntax.Exposing as Exposing exposing (Exposing)
-import Elm.Syntax.Import exposing (Import)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
 import Elm.Syntax.TypeAnnotation as TypeAnnotation exposing (TypeAnnotation)
+import Review.ModuleNameLookupTable as ModuleNameLookupTable exposing (ModuleNameLookupTable)
 import Review.Rule as Rule exposing (Rule)
 
 
@@ -76,8 +75,7 @@ elm-review --template sparksp/elm-review-ports/example --rules NoUnsafePorts
 -}
 rule : Check -> Rule
 rule check =
-    Rule.newModuleRuleSchema "NoUnsafePorts" (initialModuleContext check)
-        |> Rule.withImportVisitor importVisitor
+    Rule.newModuleRuleSchemaUsingContextCreator "NoUnsafePorts" (initialModuleContext check)
         |> Rule.withDeclarationListVisitor declarationListVisitor
         |> Rule.fromModuleRuleSchema
 
@@ -121,11 +119,6 @@ type Check
 
 
 --- VISITORS
-
-
-importVisitor : Node Import -> ModuleContext -> ( List nothing, ModuleContext )
-importVisitor node context =
-    ( [], rememberImportedModule (Node.value node) context )
 
 
 declarationListVisitor : List (Node Declaration) -> ModuleContext -> ( List (Rule.Error {}), ModuleContext )
@@ -186,7 +179,12 @@ checkPortArguments : ModuleContext -> (Node String -> Rule.Error {}) -> Node Typ
 checkPortArguments context makeError portArguments =
     case Node.value portArguments of
         TypeAnnotation.Typed portType _ ->
-            case expandFunctionCall context (Node.value portType) of
+            let
+                functionCall : String
+                functionCall =
+                    Node.value portType |> Tuple.second
+            in
+            case expandFunctionCall context portArguments functionCall of
                 ( [ "Json", "Decode" ], "Value" ) ->
                     []
 
@@ -234,6 +232,7 @@ type ModuleContext
         { aliases : Dict ModuleName ModuleName
         , check : Check
         , imports : Dict String ModuleName
+        , lookupTable : ModuleNameLookupTable
         }
 
 
@@ -247,119 +246,26 @@ canCheck check portType =
             thisType == portType
 
 
-initialModuleContext : Check -> ModuleContext
+initialModuleContext : Check -> Rule.ContextCreator () ModuleContext
 initialModuleContext check =
-    Context
-        { aliases = Dict.empty
-        , check = check
-        , imports = Dict.empty
-        }
+    Rule.initContextCreator
+        (\lookupTable () ->
+            Context
+                { aliases = Dict.empty
+                , check = check
+                , imports = Dict.empty
+                , lookupTable = lookupTable
+                }
+        )
+        |> Rule.withModuleNameLookupTable
 
 
-rememberImportedModule : Import -> ModuleContext -> ModuleContext
-rememberImportedModule { moduleName, moduleAlias, exposingList } context =
-    let
-        moduleNameValue : ModuleName
-        moduleNameValue =
-            Node.value moduleName
-    in
-    case moduleNameValue of
-        "Json" :: _ ->
-            context
-                |> rememberImportedAlias moduleNameValue moduleAlias
-                |> rememberImportedList moduleNameValue exposingList
-
-        _ ->
-            context
-
-
-rememberImportedAlias : ModuleName -> Maybe (Node ModuleName) -> ModuleContext -> ModuleContext
-rememberImportedAlias moduleName maybeModuleAlias (Context context) =
-    case Maybe.map Node.value maybeModuleAlias of
-        Just moduleAlias ->
-            Context { context | aliases = Dict.insert moduleAlias moduleName context.aliases }
-
-        Nothing ->
-            Context context
-
-
-rememberImportedList : ModuleName -> Maybe (Node Exposing) -> ModuleContext -> ModuleContext
-rememberImportedList moduleName exposingList context =
-    case Maybe.map Node.value exposingList of
-        Just (Exposing.All _) ->
-            rememberImportedAllModule moduleName context
-
-        Just (Exposing.Explicit list) ->
-            rememberImportedExplicitList moduleName list context
-
-        Nothing ->
-            context
-
-
-rememberImportedAllModule : ModuleName -> ModuleContext -> ModuleContext
-rememberImportedAllModule moduleName context =
-    case moduleName of
-        [ "Json", "Decode" ] ->
-            rememberImport ( moduleName, "Value" ) context
-
-        [ "Json", "Encode" ] ->
-            rememberImport ( moduleName, "Value" ) context
-
-        _ ->
-            context
-
-
-rememberImportedExplicitList : ModuleName -> List (Node Exposing.TopLevelExpose) -> ModuleContext -> ModuleContext
-rememberImportedExplicitList moduleName list context =
-    List.foldl (rememberImportedItem moduleName) context list
-
-
-rememberImportedItem : ModuleName -> Node Exposing.TopLevelExpose -> ModuleContext -> ModuleContext
-rememberImportedItem moduleName item context =
-    case Node.value item of
-        Exposing.FunctionExpose _ ->
-            context
-
-        Exposing.InfixExpose _ ->
-            context
-
-        Exposing.TypeOrAliasExpose name ->
-            rememberImport ( moduleName, name ) context
-
-        Exposing.TypeExpose { name } ->
-            rememberImport ( moduleName, name ) context
-
-
-rememberImport : ( ModuleName, String ) -> ModuleContext -> ModuleContext
-rememberImport ( moduleName, name ) (Context context) =
-    Context { context | imports = Dict.insert name moduleName context.imports }
-
-
-expandFunctionCall : ModuleContext -> ( ModuleName, String ) -> ( ModuleName, String )
-expandFunctionCall (Context { aliases, imports }) ( moduleCall, functionCall ) =
-    let
-        expandedModule : ModuleName
-        expandedModule =
-            case moduleCall of
-                [] ->
-                    lookupFunctionModule imports functionCall
-
-                _ ->
-                    lookupModuleAlias aliases moduleCall
-    in
-    ( expandedModule, functionCall )
-
-
-lookupFunctionModule : Dict String ModuleName -> String -> ModuleName
-lookupFunctionModule imports function =
-    Dict.get function imports
+expandFunctionCall : ModuleContext -> Node TypeAnnotation -> String -> ( ModuleName, String )
+expandFunctionCall (Context { lookupTable }) typeAnnotation functionCall =
+    ( ModuleNameLookupTable.moduleNameFor lookupTable typeAnnotation
         |> Maybe.withDefault []
-
-
-lookupModuleAlias : Dict ModuleName ModuleName -> ModuleName -> ModuleName
-lookupModuleAlias aliases moduleName =
-    Dict.get moduleName aliases
-        |> Maybe.withDefault moduleName
+    , functionCall
+    )
 
 
 unsafeIncomingPortError : String -> Node String -> Rule.Error {}
@@ -387,8 +293,29 @@ unsafeOutgoingPortError name portType =
 
 
 formatType : ( ModuleName, String ) -> String
-formatType ( moduleName, name ) =
-    "`" ++ String.join "." (moduleName ++ [ name ]) ++ "`"
+formatType type_ =
+    case filterCoreType type_ of
+        ( moduleName, name ) ->
+            "`" ++ String.join "." (moduleName ++ [ name ]) ++ "`"
+
+
+filterCoreType : ( ModuleName, String ) -> ( ModuleName, String )
+filterCoreType type_ =
+    case type_ of
+        ( [ "Basics" ], "Bool" ) ->
+            ( [], "Bool" )
+
+        ( [ "Basics" ], "Float" ) ->
+            ( [], "Float" )
+
+        ( [ "Basics" ], "Int" ) ->
+            ( [], "Int" )
+
+        ( [ "String" ], "String" ) ->
+            ( [], "String" )
+
+        _ ->
+            type_
 
 
 
