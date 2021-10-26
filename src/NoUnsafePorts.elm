@@ -14,7 +14,6 @@ module NoUnsafePorts exposing
 
 -}
 
-import Dict exposing (Dict)
 import Elm.Syntax.Declaration as Declaration exposing (Declaration)
 import Elm.Syntax.ModuleName exposing (ModuleName)
 import Elm.Syntax.Node as Node exposing (Node)
@@ -229,9 +228,7 @@ type PortType
 
 type ModuleContext
     = Context
-        { aliases : Dict ModuleName ModuleName
-        , check : Check
-        , imports : Dict String ModuleName
+        { check : Check
         , lookupTable : ModuleNameLookupTable
         }
 
@@ -251,9 +248,7 @@ initialModuleContext check =
     Rule.initContextCreator
         (\lookupTable () ->
             Context
-                { aliases = Dict.empty
-                , check = check
-                , imports = Dict.empty
+                { check = check
                 , lookupTable = lookupTable
                 }
         )
