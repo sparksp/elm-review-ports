@@ -16,7 +16,8 @@ module NoUnsafePorts exposing
 
 import Elm.Syntax.Declaration as Declaration exposing (Declaration)
 import Elm.Syntax.ModuleName exposing (ModuleName)
-import Elm.Syntax.Node as Node exposing (Node)
+import Elm.Syntax.Node as Node exposing (Node(..))
+import Elm.Syntax.Range exposing (Range)
 import Elm.Syntax.TypeAnnotation as TypeAnnotation exposing (TypeAnnotation)
 import Review.ModuleNameLookupTable as ModuleNameLookupTable exposing (ModuleNameLookupTable)
 import Review.Rule as Rule exposing (Rule)
@@ -126,11 +127,11 @@ declarationListVisitor nodes context =
 
 
 checkDeclaration : ModuleContext -> Node Declaration -> List (Rule.Error {})
-checkDeclaration context node =
-    case Node.value node of
+checkDeclaration context (Node _ declaration) =
+    case declaration of
         Declaration.PortDeclaration { name, typeAnnotation } ->
             case Node.value typeAnnotation of
-                TypeAnnotation.FunctionTypeAnnotation portArguments portReturnType ->
+                TypeAnnotation.FunctionTypeAnnotation portArguments (Node _ portReturnType) ->
                     checkPort context (Node.value name) portArguments (getPortType portReturnType)
 
                 _ ->
@@ -144,7 +145,7 @@ checkPort : ModuleContext -> String -> Node TypeAnnotation -> Maybe PortType -> 
 checkPort ((Context { check }) as context) name portArguments maybePortType =
     case Maybe.map (\portType -> ( portType, canCheck check portType )) maybePortType of
         Just ( IncomingPort, True ) ->
-            checkIncomingPort context name portArguments
+            checkIncomingPort context name (Node.value portArguments)
 
         Just ( OutgoingPort, True ) ->
             checkOutgoingPort context name portArguments
@@ -158,9 +159,9 @@ checkPort ((Context { check }) as context) name portArguments maybePortType =
             []
 
 
-checkIncomingPort : ModuleContext -> String -> Node TypeAnnotation -> List (Rule.Error {})
+checkIncomingPort : ModuleContext -> String -> TypeAnnotation -> List (Rule.Error {})
 checkIncomingPort context name portArguments =
-    case Node.value portArguments of
+    case portArguments of
         TypeAnnotation.FunctionTypeAnnotation subMessageType _ ->
             checkPortArguments context (unsafeIncomingPortError name) subMessageType
 
@@ -174,16 +175,16 @@ checkOutgoingPort context name portArguments =
     checkPortArguments context (unsafeOutgoingPortError name) portArguments
 
 
-checkPortArguments : ModuleContext -> (Node String -> Rule.Error {}) -> Node TypeAnnotation -> List (Rule.Error {})
-checkPortArguments context makeError portArguments =
-    case Node.value portArguments of
+checkPortArguments : ModuleContext -> (Range -> String -> Rule.Error {}) -> Node TypeAnnotation -> List (Rule.Error {})
+checkPortArguments context makeError ((Node range portArguments) as portArgumentsNode) =
+    case portArguments of
         TypeAnnotation.Typed portType _ ->
             let
                 functionCall : String
                 functionCall =
                     Node.value portType |> Tuple.second
             in
-            case expandFunctionCall context portArguments functionCall of
+            case expandFunctionCall context portArgumentsNode functionCall of
                 ( [ "Json", "Decode" ], "Value" ) ->
                     []
 
@@ -191,23 +192,23 @@ checkPortArguments context makeError portArguments =
                     []
 
                 expandedPortType ->
-                    [ makeError (Node.map (\_ -> formatType expandedPortType) portArguments) ]
+                    [ makeError range (formatType expandedPortType) ]
 
         TypeAnnotation.Record _ ->
-            [ makeError (Node.map (\_ -> "record") portArguments) ]
+            [ makeError range "record" ]
 
         TypeAnnotation.Tupled _ ->
-            [ makeError (Node.map (\_ -> "tuple") portArguments) ]
+            [ makeError range "tuple" ]
 
         _ ->
-            [ makeError (Node.map (\_ -> "type") portArguments) ]
+            [ makeError range "type" ]
 
 
-getPortType : Node TypeAnnotation -> Maybe PortType
+getPortType : TypeAnnotation -> Maybe PortType
 getPortType portReturnType =
-    case Node.value portReturnType of
-        TypeAnnotation.Typed node _ ->
-            case Node.value node of
+    case portReturnType of
+        TypeAnnotation.Typed (Node _ typed) _ ->
+            case typed of
                 ( [], "Sub" ) ->
                     Just IncomingPort
 
@@ -263,28 +264,28 @@ expandFunctionCall (Context { lookupTable }) typeAnnotation functionCall =
     )
 
 
-unsafeIncomingPortError : String -> Node String -> Rule.Error {}
-unsafeIncomingPortError name portType =
+unsafeIncomingPortError : String -> Range -> String -> Rule.Error {}
+unsafeIncomingPortError name range portType =
     Rule.error
-        { message = "Port `" ++ name ++ "` expects unsafe " ++ Node.value portType ++ " data."
+        { message = "Port `" ++ name ++ "` expects unsafe " ++ portType ++ " data."
         , details =
             [ "When a port expecting a basic type receives data of another type it will cause a runtime error."
             , "You should change this port to use `Json.Encode.Value` and write a `Decoder` handle the data."
             ]
         }
-        (Node.range portType)
+        range
 
 
-unsafeOutgoingPortError : String -> Node String -> Rule.Error {}
-unsafeOutgoingPortError name portType =
+unsafeOutgoingPortError : String -> Range -> String -> Rule.Error {}
+unsafeOutgoingPortError name range portType =
     Rule.error
-        { message = "Port `" ++ name ++ "` sends unsafe " ++ Node.value portType ++ " data."
+        { message = "Port `" ++ name ++ "` sends unsafe " ++ portType ++ " data."
         , details =
             [ "When a port expecting an unsafe type receives data of another type it will cause a runtime error."
             , "You should change this port to use `Json.Encode.Value` and use an `Encoder` to generate a safe value."
             ]
         }
-        (Node.range portType)
+        range
 
 
 formatType : ( ModuleName, String ) -> String
