@@ -68,6 +68,15 @@ Ports are not allowed in Elm packages - you should not enable this when developi
     main =
         Html.text "Hello"
 
+
+## Try it out
+
+You can try this rule out by running the following command:
+
+```bash
+elm-review --template sparksp/elm-review-ports/example --rules NoUnusedPorts
+```
+
 -}
 rule : Rule
 rule =

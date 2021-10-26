@@ -64,6 +64,15 @@ If a port expecting an `Int` receives a `Float` it will cause a runtime error. W
   - Incoming ports must expect a `Value` from `Json.Encode` or `Json.Decode` and result in a `Sub`.
   - The rule looks for the types `Cmd`, `Sub` and `Value` only - do not alias these types.
 
+
+## Try it out
+
+You can try this rule out by running the following command:
+
+```bash
+elm-review --template sparksp/elm-review-ports/example --rules NoUnsafePorts
+```
+
 -}
 rule : Check -> Rule
 rule check =

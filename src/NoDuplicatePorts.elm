@@ -33,6 +33,15 @@ It is common practice to have a single `Ports` module to contain all of the port
 
 Ports are not allowed in Elm packages - you should not enable this when developing an Elm package.
 
+
+## Try it out
+
+You can try this rule out by running the following command:
+
+```bash
+elm-review --template sparksp/elm-review-ports/example --rules NoDuplicatePorts
+```
+
 -}
 rule : Rule
 rule =
