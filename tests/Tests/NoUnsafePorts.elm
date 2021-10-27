@@ -2,7 +2,11 @@ module Tests.NoUnsafePorts exposing (all)
 
 import Fuzz exposing (Fuzzer)
 import NoUnsafePorts exposing (onlyIncomingPorts, rule)
+import Review.Project as Project exposing (Project)
 import Review.Test
+import Review.Test.Dependencies as Dependencies
+import Review.Test.Dependencies.ElmJson as ElmJson
+import Review.Test.Dependencies.NoRedInkElmJsonDecodePipeline as NoRedInkElmJsonDecodePipeline
 import Test exposing (Test, describe, fuzz, test)
 
 
@@ -96,7 +100,7 @@ module Main exposing (main)
 import Json.Decode
 port action : (Json.Decode.Value -> msg) -> Sub msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         , test "Json.Encode.Value type" <|
             \_ ->
@@ -105,7 +109,7 @@ module Main exposing (main)
 import Json.Encode
 port action : (Json.Encode.Value -> msg) -> Sub msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         , test "import Json.Decode exposing (Value) type" <|
             \_ ->
@@ -114,7 +118,7 @@ module Main exposing (main)
 import Json.Decode exposing (Value)
 port action : (Value -> msg) -> Sub msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         , test "import Json.Encode exposing (Value) type" <|
             \_ ->
@@ -123,7 +127,7 @@ module Main exposing (main)
 import Json.Encode exposing (Value)
 port action : (Value -> msg) -> Sub msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         , test "import Json.Decode exposing (..) Value type" <|
             \_ ->
@@ -132,7 +136,7 @@ module Main exposing (main)
 import Json.Decode exposing (..)
 port action : (Value -> msg) -> Sub msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         , test "import Json.Encode exposing (..) Value type" <|
             \_ ->
@@ -141,7 +145,7 @@ module Main exposing (main)
 import Json.Encode exposing (..)
 port action : (Value -> msg) -> Sub msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         , test "aliased Json.Decode.Value type" <|
             \_ ->
@@ -150,7 +154,7 @@ module Main exposing (main)
 import Json.Decode as D
 port action : (D.Value -> msg) -> Sub msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         , test "aliased Json.Encode.Value type" <|
             \_ ->
@@ -159,7 +163,17 @@ module Main exposing (main)
 import Json.Encode as Encode
 port action : (Encode.Value -> msg) -> Sub msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
+                    |> Review.Test.expectNoErrors
+        , test "shadowed Json.Decode with Json.Decode.Pipeline import" <|
+            \() ->
+                """
+module Main exposing (main)
+import Json.Decode as D
+import Json.Decode.Pipeline as D
+port action : (D.Value -> msg) -> Sub msg
+main = 1"""
+                    |> Review.Test.runWithProjectData projectWithElmJsonPipeline (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         ]
 
@@ -216,7 +230,7 @@ module Main exposing (main)
 import Json.Decode
 port action : Json.Decode.Value -> Cmd msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         , test "Json.Encode.Value type" <|
             \_ ->
@@ -225,7 +239,7 @@ module Main exposing (main)
 import Json.Encode
 port action : Json.Encode.Value -> Cmd msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         , test "import Json.Decode exposing (Value) type" <|
             \_ ->
@@ -234,7 +248,7 @@ module Main exposing (main)
 import Json.Decode exposing (Value)
 port action : Value -> Cmd msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         , test "import Json.Encode exposing (Value) type" <|
             \_ ->
@@ -243,7 +257,7 @@ module Main exposing (main)
 import Json.Encode exposing (Value)
 port action : Value -> Cmd msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         , test "import Json.Decode exposing (..) Value type" <|
             \_ ->
@@ -252,7 +266,7 @@ module Main exposing (main)
 import Json.Decode exposing (..)
 port action : Value -> Cmd msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         , test "import Json.Encode exposing (..) Value type" <|
             \_ ->
@@ -261,7 +275,7 @@ module Main exposing (main)
 import Json.Encode exposing (..)
 port action : Value -> Cmd msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         , test "aliased Json.Decode.Value type" <|
             \_ ->
@@ -270,7 +284,7 @@ module Main exposing (main)
 import Json.Decode as D
 port action : D.Value -> Cmd msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         , test "aliased Json.Encode.Value type" <|
             \_ ->
@@ -279,7 +293,7 @@ module Main exposing (main)
 import Json.Encode as Encode
 port action : Encode.Value -> Cmd msg
 main = 1"""
-                    |> Review.Test.run (rule NoUnsafePorts.any)
+                    |> Review.Test.runWithProjectData projectWithElmJson (rule NoUnsafePorts.any)
                     |> Review.Test.expectNoErrors
         ]
 
@@ -364,6 +378,18 @@ outgoingPortModule portType =
         , "port action : " ++ portType ++ " -> Cmd msg"
         , "main = 1"
         ]
+
+
+projectWithElmJson : Project
+projectWithElmJson =
+    Dependencies.projectWithElmCore
+        |> Project.addDependency ElmJson.dependency
+
+
+projectWithElmJsonPipeline : Project
+projectWithElmJsonPipeline =
+    projectWithElmJson
+        |> Project.addDependency NoRedInkElmJsonDecodePipeline.dependency
 
 
 quote : String -> String
