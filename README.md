@@ -9,9 +9,9 @@ Provides [`elm-review`](https://package.elm-lang.org/packages/jfmengels/elm-revi
 
 ## Provided rules
 
-- [`NoDuplicatePorts`](https://package.elm-lang.org/packages/sparksp/elm-review-ports/1.3.0/NoDuplicatePorts) - Ensure that port names are unique across your project.
-- [`NoUnsafePorts`](https://package.elm-lang.org/packages/sparksp/elm-review-ports/1.3.0/NoUnsafePorts) - Forbid unsafe types in ports.
-- [`NoUnusedPorts`](https://package.elm-lang.org/packages/sparksp/elm-review-ports/1.3.0/NoUnusedPorts) - Ensure that all defined ports have been used.
+- [`NoDuplicatePorts`](https://package.elm-lang.org/packages/sparksp/elm-review-ports/1.3.1/NoDuplicatePorts) - Ensure that port names are unique across your project.
+- [`NoUnsafePorts`](https://package.elm-lang.org/packages/sparksp/elm-review-ports/1.3.1/NoUnsafePorts) - Forbid unsafe types in ports.
+- [`NoUnusedPorts`](https://package.elm-lang.org/packages/sparksp/elm-review-ports/1.3.1/NoUnusedPorts) - Ensure that all defined ports have been used.
 
 
 ## Configuration
