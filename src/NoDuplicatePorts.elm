@@ -158,5 +158,10 @@ error portName =
 
 
 fastConcatMap : (a -> List b) -> List a -> List b
-fastConcatMap fn list =
-    List.foldr (fn >> (++)) [] list
+fastConcatMap fn =
+    let
+        helper : a -> List b -> List b
+        helper item acc =
+            fn item ++ acc
+    in
+    List.foldr helper []
