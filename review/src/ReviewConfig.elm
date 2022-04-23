@@ -59,4 +59,5 @@ config =
     , NoUnused.Patterns.rule
     , NoUnused.Variables.rule
     , Simplify.rule Simplify.defaults
+        |> Rule.ignoreErrorsForDirectories [ "tests/Review/Test/Dependencies/" ]
     ]
