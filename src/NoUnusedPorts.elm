@@ -321,7 +321,7 @@ fromModuleToProject _ _ { functionCalls, moduleName, ports } =
                 }
 
         { used, calls } =
-            Dict.foldl finder (SearchContext Dict.empty Set.empty) ports
+            Dict.foldl finder { calls = Dict.empty, used = Set.empty } ports
 
         ( usedPorts, unusedPorts ) =
             Dict.partition (\name _ -> Set.member name used) ports
