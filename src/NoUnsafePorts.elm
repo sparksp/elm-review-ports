@@ -290,9 +290,11 @@ unsafeOutgoingPortError name range portType =
 
 formatType : ( ModuleName, String ) -> String
 formatType type_ =
-    case filterCoreType type_ of
-        ( moduleName, name ) ->
-            "`" ++ String.join "." (moduleName ++ [ name ]) ++ "`"
+    let
+        ( moduleName, name ) =
+            filterCoreType type_
+    in
+    "`" ++ String.join "." (moduleName ++ [ name ]) ++ "`"
 
 
 filterCoreType : ( ModuleName, String ) -> ( ModuleName, String )
