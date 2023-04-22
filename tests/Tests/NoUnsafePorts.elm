@@ -63,14 +63,14 @@ incomingPortTests =
                 incomingPortModule maybeType
                     |> Review.Test.run (rule NoUnsafePorts.any)
                     |> Review.Test.expectErrors
-                        [ unsafeIncomingPortError { name = "action", type_ = quote "Maybe", under = maybeType }
+                        [ unsafeIncomingPortError { name = "action", type_ = quote "Maybe.Maybe", under = maybeType }
                         ]
         , fuzz fuzzListType "list type" <|
             \listType ->
                 incomingPortModule listType
                     |> Review.Test.run (rule NoUnsafePorts.any)
                     |> Review.Test.expectErrors
-                        [ unsafeIncomingPortError { name = "action", type_ = quote "List", under = listType }
+                        [ unsafeIncomingPortError { name = "action", type_ = quote "List.List", under = listType }
                         ]
         , fuzz fuzzArrayType "array type" <|
             \arrayType ->
@@ -193,14 +193,14 @@ outgoingPortTests =
                 outgoingPortModule maybeType
                     |> Review.Test.run (rule NoUnsafePorts.any)
                     |> Review.Test.expectErrors
-                        [ unsafeOutgoingPortError { name = "action", type_ = quote "Maybe", under = maybeType }
+                        [ unsafeOutgoingPortError { name = "action", type_ = quote "Maybe.Maybe", under = maybeType }
                         ]
         , fuzz fuzzListType "list type" <|
             \listType ->
                 outgoingPortModule listType
                     |> Review.Test.run (rule NoUnsafePorts.any)
                     |> Review.Test.expectErrors
-                        [ unsafeOutgoingPortError { name = "action", type_ = quote "List", under = listType }
+                        [ unsafeOutgoingPortError { name = "action", type_ = quote "List.List", under = listType }
                         ]
         , fuzz fuzzArrayType "array type" <|
             \arrayType ->
